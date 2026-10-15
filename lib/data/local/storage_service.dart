@@ -150,3 +150,4 @@ class LocalStorageService {
     _notesController.close();
   }
 }
+
