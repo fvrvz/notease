@@ -11,11 +11,11 @@ class SettingsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeProvider);
     final isDark = themeMode == ThemeMode.dark;
-    final borderColor = isDark ? GitHubColors.darkBorderDefault : GitHubColors.lightBorderDefault;
-    final canvasColor = isDark ? GitHubColors.darkCanvasDefault : GitHubColors.lightCanvasSubtle;
-    final surfaceColor = isDark ? GitHubColors.darkCanvasSubtle : GitHubColors.lightCanvasDefault;
-    final fgDefault = isDark ? GitHubColors.darkFgDefault : GitHubColors.lightFgDefault;
-    final fgMuted = isDark ? GitHubColors.darkFgMuted : GitHubColors.lightFgMuted;
+    final borderColor = isDark ? AppColors.darkBorderMuted : AppColors.lightBorderMuted;
+    final canvasColor = isDark ? AppColors.darkCanvasDefault : AppColors.lightCanvasSubtle;
+    final surfaceColor = isDark ? AppColors.darkCanvasSubtle : AppColors.lightCanvasDefault;
+    final fgDefault = isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault;
+    final fgMuted = isDark ? AppColors.darkFgMuted : AppColors.lightFgMuted;
 
     return Scaffold(
       backgroundColor: canvasColor,
@@ -24,14 +24,14 @@ class SettingsPage extends ConsumerWidget {
         elevation: 0,
         scrolledUnderElevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_rounded, size: 18, color: fgMuted),
+          icon: Icon(Icons.arrow_back_rounded, size: 20, color: fgMuted),
           onPressed: () => context.pop(),
         ),
         title: Text(
           'Settings',
           style: TextStyle(
             fontSize: 16,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w700,
             color: fgDefault,
           ),
         ),
@@ -41,12 +41,12 @@ class SettingsPage extends ConsumerWidget {
         ),
       ),
       body: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
         children: [
-          // GitHub Repository Settings Section Box
-          _GitHubSection(
+          // Appearance Section
+          _SettingsSection(
             title: 'Appearance',
-            description: 'Choose your default theme interface mode.',
+            description: 'Customize the application theme style.',
             borderColor: borderColor,
             surfaceColor: surfaceColor,
             children: [
@@ -59,7 +59,7 @@ class SettingsPage extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Theme preference',
+                          'Interface Theme',
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
@@ -68,12 +68,12 @@ class SettingsPage extends ConsumerWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          isDark ? 'GitHub Dark mode active' : 'GitHub Light mode active',
-                          style: TextStyle(fontSize: 12, color: fgMuted),
+                          isDark ? 'Dark theme enabled' : 'Light theme enabled',
+                          style: TextStyle(fontSize: 12.5, color: fgMuted),
                         ),
                       ],
                     ),
-                    _GitHubThemeToggle(
+                    _ThemeTogglePill(
                       isDark: isDark,
                       onToggle: () => ref.read(themeModeProvider.notifier).toggle(),
                       borderColor: borderColor,
@@ -84,49 +84,55 @@ class SettingsPage extends ConsumerWidget {
             ],
           ),
 
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
 
-          _GitHubSection(
-            title: 'Storage & Sync',
-            description: 'Local guest storage is currently active. Connect a cloud provider to sync.',
+          // Cloud Sync Section
+          _SettingsSection(
+            title: 'Storage & Cloud Sync',
+            description: 'Notes are saved locally on this device. Connect a provider to sync across platforms.',
             borderColor: borderColor,
             surfaceColor: surfaceColor,
             children: [
-              _SyncProviderRow(
+              _SyncProviderItem(
+                icon: Icons.add_to_drive_rounded,
                 name: 'Google Drive',
-                desc: 'Sync notes JSON to your personal Google Drive app data.',
+                desc: 'Sync notes to your personal Google Drive app folder',
                 isDark: isDark,
                 borderColor: borderColor,
               ),
               Divider(height: 1, color: borderColor),
-              _SyncProviderRow(
-                name: 'iCloud (Apple)',
-                desc: 'Seamless sync across macOS and iOS devices.',
+              _SyncProviderItem(
+                icon: Icons.cloud_done_rounded,
+                name: 'Apple iCloud',
+                desc: 'Native iCloud Drive synchronization for Apple devices',
                 isDark: isDark,
                 borderColor: borderColor,
               ),
               Divider(height: 1, color: borderColor),
-              _SyncProviderRow(
+              _SyncProviderItem(
+                icon: Icons.window_rounded,
                 name: 'Microsoft OneDrive',
-                desc: 'Store notes inside your personal or work OneDrive.',
+                desc: 'Keep notes synchronized with OneDrive cloud',
                 isDark: isDark,
                 borderColor: borderColor,
               ),
               Divider(height: 1, color: borderColor),
-              _SyncProviderRow(
+              _SyncProviderItem(
+                icon: Icons.cloud_queue_rounded,
                 name: 'Dropbox',
-                desc: 'Direct file synchronization to Dropbox/Apps/NoteEase.',
+                desc: 'Save and synchronize markdown files in Dropbox',
                 isDark: isDark,
                 borderColor: borderColor,
               ),
             ],
           ),
 
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
 
-          _GitHubSection(
+          // About Section
+          _SettingsSection(
             title: 'About NoteEase',
-            description: 'Cross-platform notes client inspired by GitHub Primer UI.',
+            description: 'Minimal, cross-platform notes application.',
             borderColor: borderColor,
             surfaceColor: surfaceColor,
             children: [
@@ -135,8 +141,23 @@ class SettingsPage extends ConsumerWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Version', style: TextStyle(fontSize: 13, color: fgDefault)),
-                    Text('v1.0.0 (Primer)', style: TextStyle(fontSize: 13, fontFamily: 'monospace', color: fgMuted)),
+                    Text('Version', style: TextStyle(fontSize: 13.5, color: fgDefault)),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: isDark ? AppColors.darkCanvasInset : AppColors.lightCanvasInset,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: borderColor),
+                      ),
+                      child: Text(
+                        '1.0.0',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: fgMuted,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -148,8 +169,8 @@ class SettingsPage extends ConsumerWidget {
   }
 }
 
-class _GitHubSection extends StatelessWidget {
-  const _GitHubSection({
+class _SettingsSection extends StatelessWidget {
+  const _SettingsSection({
     required this.title,
     required this.description,
     required this.borderColor,
@@ -166,8 +187,8 @@ class _GitHubSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final fgDefault = isDark ? GitHubColors.darkFgDefault : GitHubColors.lightFgDefault;
-    final fgMuted = isDark ? GitHubColors.darkFgMuted : GitHubColors.lightFgMuted;
+    final fgDefault = isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault;
+    final fgMuted = isDark ? AppColors.darkFgMuted : AppColors.lightFgMuted;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -175,8 +196,8 @@ class _GitHubSection extends StatelessWidget {
         Text(
           title,
           style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
+            fontSize: 14.5,
+            fontWeight: FontWeight.w700,
             color: fgDefault,
           ),
         ),
@@ -184,15 +205,15 @@ class _GitHubSection extends StatelessWidget {
         Text(
           description,
           style: TextStyle(
-            fontSize: 12,
+            fontSize: 12.5,
             color: fgMuted,
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         Container(
           decoration: BoxDecoration(
             color: surfaceColor,
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(color: borderColor, width: 1),
           ),
           child: Column(children: children),
@@ -202,8 +223,8 @@ class _GitHubSection extends StatelessWidget {
   }
 }
 
-class _GitHubThemeToggle extends StatelessWidget {
-  const _GitHubThemeToggle({
+class _ThemeTogglePill extends StatelessWidget {
+  const _ThemeTogglePill({
     required this.isDark,
     required this.onToggle,
     required this.borderColor,
@@ -216,15 +237,15 @@ class _GitHubThemeToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: isDark ? GitHubColors.darkCanvasInset : GitHubColors.lightCanvasInset,
-      borderRadius: BorderRadius.circular(6),
+      color: isDark ? AppColors.darkCanvasInset : AppColors.lightCanvasInset,
+      borderRadius: BorderRadius.circular(20),
       child: InkWell(
         onTap: onToggle,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(20),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(20),
             border: Border.all(color: borderColor),
           ),
           child: Row(
@@ -232,16 +253,16 @@ class _GitHubThemeToggle extends StatelessWidget {
             children: [
               Icon(
                 isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
-                size: 14,
-                color: isDark ? GitHubColors.darkFgDefault : GitHubColors.lightFgDefault,
+                size: 15,
+                color: isDark ? AppColors.accent : AppColors.accentLight,
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 8),
               Text(
-                isDark ? 'Dark' : 'Light',
+                isDark ? 'Dark Mode' : 'Light Mode',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 12.5,
                   fontWeight: FontWeight.w600,
-                  color: isDark ? GitHubColors.darkFgDefault : GitHubColors.lightFgDefault,
+                  color: isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault,
                 ),
               ),
             ],
@@ -252,14 +273,16 @@ class _GitHubThemeToggle extends StatelessWidget {
   }
 }
 
-class _SyncProviderRow extends StatelessWidget {
-  const _SyncProviderRow({
+class _SyncProviderItem extends StatelessWidget {
+  const _SyncProviderItem({
+    required this.icon,
     required this.name,
     required this.desc,
     required this.isDark,
     required this.borderColor,
   });
 
+  final IconData icon;
   final String name;
   final String desc;
   final bool isDark;
@@ -267,13 +290,24 @@ class _SyncProviderRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fgDefault = isDark ? GitHubColors.darkFgDefault : GitHubColors.lightFgDefault;
-    final fgMuted = isDark ? GitHubColors.darkFgMuted : GitHubColors.lightFgMuted;
+    final fgDefault = isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault;
+    final fgMuted = isDark ? AppColors.darkFgMuted : AppColors.lightFgMuted;
+    final accent = isDark ? AppColors.accent : AppColors.accentLight;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
         children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: isDark ? 0.15 : 0.08),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 18, color: accent),
+          ),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -281,7 +315,7 @@ class _SyncProviderRow extends StatelessWidget {
                 Text(
                   name,
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 13.5,
                     fontWeight: FontWeight.w600,
                     color: fgDefault,
                   ),
@@ -295,25 +329,24 @@ class _SyncProviderRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          // GitHub style outline secondary button
           Material(
-            color: isDark ? GitHubColors.darkCanvasInset : GitHubColors.lightCanvasInset,
-            borderRadius: BorderRadius.circular(6),
+            color: isDark ? AppColors.darkCanvasInset : AppColors.lightCanvasInset,
+            borderRadius: BorderRadius.circular(8),
             child: InkWell(
               onTap: () {},
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(8),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: borderColor),
                 ),
                 child: Text(
                   'Connect',
                   style: TextStyle(
                     fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: isDark ? GitHubColors.darkAccentFg : GitHubColors.lightAccentFg,
+                    fontWeight: FontWeight.w600,
+                    color: accent,
                   ),
                 ),
               ),

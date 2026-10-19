@@ -56,7 +56,7 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
 
   void _onChanged() {
     _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 400), () {
+    _debounce = Timer(const Duration(milliseconds: 350), () {
       if (_currentNote != null) {
         ref.read(notesNotifierProvider.notifier).updateNote(
           _currentNote!.copyWith(
@@ -68,83 +68,74 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
     });
   }
 
-  Color _getBadgeColor(NoteColor color, bool isDark) {
-    if (isDark) {
-      switch (color) {
-        case NoteColor.sage:
-          return GitHubColors.darkNoteGreen;
-        case NoteColor.sky:
-          return GitHubColors.darkNoteBlue;
-        case NoteColor.lavender:
-          return GitHubColors.darkNotePurple;
-        case NoteColor.peach:
-          return GitHubColors.darkNoteOrange;
-        case NoteColor.butter:
-          return GitHubColors.darkNoteYellow;
-        case NoteColor.mint:
-          return GitHubColors.darkNoteTeal;
-        case NoteColor.rose:
-          return GitHubColors.darkNotePink;
-      }
-    } else {
-      switch (color) {
-        case NoteColor.sage:
-          return const Color(0xFF1A7F37);
-        case NoteColor.sky:
-          return const Color(0xFF0969DA);
-        case NoteColor.lavender:
-          return const Color(0xFF8250DF);
-        case NoteColor.peach:
-          return const Color(0xFFBC4C00);
-        case NoteColor.butter:
-          return const Color(0xFF9A6700);
-        case NoteColor.mint:
-          return const Color(0xFF1B7C83);
-        case NoteColor.rose:
-          return const Color(0xFFBF3989);
-      }
+  Color _getNoteColor(NoteColor color) {
+    switch (color) {
+      case NoteColor.sage:
+        return AppColors.noteSage;
+      case NoteColor.sky:
+        return AppColors.noteSky;
+      case NoteColor.lavender:
+        return AppColors.noteLavender;
+      case NoteColor.peach:
+        return AppColors.notePeach;
+      case NoteColor.butter:
+        return AppColors.noteButter;
+      case NoteColor.mint:
+        return AppColors.noteMint;
+      case NoteColor.rose:
+        return AppColors.noteRose;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final borderColor = isDark ? GitHubColors.darkBorderDefault : GitHubColors.lightBorderDefault;
-    final canvasColor = isDark ? GitHubColors.darkCanvasDefault : GitHubColors.lightCanvasDefault;
-    final headerBg = isDark ? GitHubColors.darkCanvasSubtle : GitHubColors.lightCanvasSubtle;
+    final borderColor = isDark ? AppColors.darkBorderMuted : AppColors.lightBorderMuted;
+    final canvasColor = isDark ? AppColors.darkCanvasDefault : AppColors.lightCanvasDefault;
+    final headerBg = isDark ? AppColors.darkCanvasSubtle : AppColors.lightCanvasSubtle;
     final noteColor = _currentNote != null
-        ? _getBadgeColor(_currentNote!.color, isDark)
-        : (isDark ? GitHubColors.darkAccentFg : GitHubColors.lightAccentFg);
+        ? _getNoteColor(_currentNote!.color)
+        : (isDark ? AppColors.accent : AppColors.accentLight);
 
     return Container(
-      margin: const EdgeInsets.all(12),
+      margin: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: canvasColor,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: borderColor, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // GitHub Header Bar (like an issue / PR header or file header)
+          // Elegant Header Bar
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             decoration: BoxDecoration(
               color: headerBg,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
               border: Border(
                 bottom: BorderSide(color: borderColor, width: 1),
               ),
             ),
             child: Row(
               children: [
-                // Color Pill / Status indicator (like GitHub Open/Closed pill)
+                // Tag / Color Pill
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: noteColor.withValues(alpha: isDark ? 0.2 : 0.15),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: noteColor.withValues(alpha: 0.4), width: 1),
+                    color: noteColor.withValues(alpha: isDark ? 0.18 : 0.12),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: noteColor.withValues(alpha: 0.3),
+                      width: 1,
+                    ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -159,25 +150,28 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        _currentNote?.color.name ?? 'note',
+                        _currentNote?.color.name.toUpperCase() ?? 'NOTE',
                         style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.6,
                           color: noteColor,
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 14),
+                // Note Title Input
                 Expanded(
                   child: TextField(
                     controller: _titleController,
                     onChanged: (_) => _onChanged(),
                     style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: isDark ? GitHubColors.darkFgDefault : GitHubColors.lightFgDefault,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.3,
+                      color: isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault,
                     ),
                     decoration: InputDecoration(
                       filled: false,
@@ -185,10 +179,10 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
                       enabledBorder: InputBorder.none,
                       focusedBorder: InputBorder.none,
                       contentPadding: EdgeInsets.zero,
-                      hintText: 'Note title...',
+                      hintText: 'Title your note...',
                       hintStyle: TextStyle(
-                        color: isDark ? GitHubColors.darkFgSubtle : GitHubColors.lightFgSubtle,
-                        fontSize: 16,
+                        color: isDark ? AppColors.darkFgSubtle : AppColors.lightFgSubtle,
+                        fontSize: 18,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -206,9 +200,8 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
                     }
                   },
                 ),
-                const SizedBox(width: 6),
-                // GitHub-style Button for Pin
-                _GitHubIconButton(
+                const SizedBox(width: 8),
+                _ActionButton(
                   tooltip: _currentNote?.isPinned == true ? 'Unpin note' : 'Pin note',
                   icon: _currentNote?.isPinned == true
                       ? Icons.push_pin_rounded
@@ -224,9 +217,8 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
                     }
                   },
                 ),
-                const SizedBox(width: 6),
-                // GitHub-style Button for Delete
-                _GitHubIconButton(
+                const SizedBox(width: 8),
+                _ActionButton(
                   tooltip: 'Delete note',
                   icon: Icons.delete_outline_rounded,
                   isDanger: true,
@@ -241,13 +233,13 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
             ),
           ),
 
-          // GitHub Markdown Meta / Sub-bar
+          // Note Meta & Timestamp strip
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 7),
             decoration: BoxDecoration(
               border: Border(
                 bottom: BorderSide(
-                  color: (isDark ? GitHubColors.darkBorderMuted : GitHubColors.lightBorderMuted),
+                  color: isDark ? AppColors.darkBorderMuted : AppColors.lightBorderMuted,
                   width: 1,
                 ),
               ),
@@ -255,46 +247,45 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
             child: Row(
               children: [
                 Icon(
-                  Icons.edit_note_rounded,
-                  size: 14,
-                  color: isDark ? GitHubColors.darkFgSubtle : GitHubColors.lightFgSubtle,
+                  Icons.auto_awesome_rounded,
+                  size: 13,
+                  color: noteColor,
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  'Markdown Editor',
+                  'Auto-saved locally',
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: 11.5,
                     fontWeight: FontWeight.w500,
-                    color: isDark ? GitHubColors.darkFgSubtle : GitHubColors.lightFgSubtle,
+                    color: isDark ? AppColors.darkFgSubtle : AppColors.lightFgSubtle,
                   ),
                 ),
                 const Spacer(),
                 if (_currentNote != null)
                   Text(
-                    'Updated ${_formatDate(_currentNote!.updatedAt)}',
+                    'Edited ${_formatDate(_currentNote!.updatedAt)}',
                     style: TextStyle(
-                      fontSize: 11,
-                      color: isDark ? GitHubColors.darkFgSubtle : GitHubColors.lightFgSubtle,
+                      fontSize: 11.5,
+                      color: isDark ? AppColors.darkFgSubtle : AppColors.lightFgSubtle,
                     ),
                   ),
               ],
             ),
           ),
 
-          // Editor Content Area
+          // Main Note Editor Content Area
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
               child: TextField(
                 controller: _contentController,
                 onChanged: (_) => _onChanged(),
                 maxLines: null,
                 expands: true,
                 style: TextStyle(
-                  height: 1.6,
-                  fontSize: 14,
-                  fontFamily: 'monospace',
-                  color: isDark ? GitHubColors.darkFgDefault : GitHubColors.lightFgDefault,
+                  height: 1.65,
+                  fontSize: 14.5,
+                  color: isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault,
                 ),
                 decoration: InputDecoration(
                   filled: false,
@@ -302,11 +293,11 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
                   enabledBorder: InputBorder.none,
                   focusedBorder: InputBorder.none,
                   contentPadding: EdgeInsets.zero,
-                  hintText: 'Type markdown or text here...',
+                  hintText: 'Start writing your thoughts, markdown, or lists...',
                   hintStyle: TextStyle(
-                    color: isDark ? GitHubColors.darkFgSubtle : GitHubColors.lightFgSubtle,
-                    fontFamily: 'monospace',
-                    fontSize: 13,
+                    color: isDark ? AppColors.darkFgSubtle : AppColors.lightFgSubtle,
+                    fontSize: 14,
+                    height: 1.6,
                   ),
                 ),
                 textAlignVertical: TextAlignVertical.top,
@@ -328,8 +319,8 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
   }
 }
 
-class _GitHubIconButton extends StatelessWidget {
-  const _GitHubIconButton({
+class _ActionButton extends StatelessWidget {
+  const _ActionButton({
     required this.icon,
     required this.onTap,
     required this.isDark,
@@ -347,32 +338,32 @@ class _GitHubIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bgColor = isDanger
-        ? Colors.transparent
-        : (active
-            ? (isDark ? GitHubColors.darkCanvasInset : GitHubColors.lightCanvasInset)
-            : (isDark ? GitHubColors.darkCanvasSubtle : GitHubColors.lightCanvasDefault));
-    final borderColor = isDark ? GitHubColors.darkBorderDefault : GitHubColors.lightBorderDefault;
+    final borderColor = isDark ? AppColors.darkBorderMuted : AppColors.lightBorderMuted;
     final fgColor = isDanger
-        ? (isDark ? GitHubColors.darkDangerFg : GitHubColors.lightDangerFg)
+        ? const Color(0xFFF85149)
         : (active
-            ? (isDark ? GitHubColors.darkAccentFg : GitHubColors.lightAccentFg)
-            : (isDark ? GitHubColors.darkFgMuted : GitHubColors.lightFgMuted));
+            ? (isDark ? AppColors.accent : AppColors.accentLight)
+            : (isDark ? AppColors.darkFgMuted : AppColors.lightFgMuted));
 
     final button = Material(
-      color: bgColor,
-      borderRadius: BorderRadius.circular(6),
+      color: active
+          ? (isDark ? AppColors.accent.withValues(alpha: 0.15) : AppColors.accentLight.withValues(alpha: 0.12))
+          : (isDark ? AppColors.darkCanvasInset : AppColors.lightCanvasDefault),
+      borderRadius: BorderRadius.circular(8),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(8),
         child: Container(
-          width: 30,
-          height: 30,
+          width: 32,
+          height: 32,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: borderColor, width: 1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: active ? (isDark ? AppColors.accent : AppColors.accentLight) : borderColor,
+              width: 1,
+            ),
           ),
-          child: Icon(icon, size: 15, color: fgColor),
+          child: Icon(icon, size: 16, color: fgColor),
         ),
       ),
     );
@@ -398,31 +389,31 @@ class _ColorPicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const colors = [
-      (NoteColor.sage, 'Green', Color(0xFF2EA043)),
-      (NoteColor.sky, 'Blue', Color(0xFF2F81F7)),
-      (NoteColor.lavender, 'Purple', Color(0xFF8957E5)),
-      (NoteColor.peach, 'Orange', Color(0xFFBD561D)),
-      (NoteColor.butter, 'Yellow', Color(0xFFD29922)),
-      (NoteColor.mint, 'Teal', Color(0xFF1B7C83)),
-      (NoteColor.rose, 'Pink', Color(0xFFDB61A2)),
+      (NoteColor.sage, 'Sage', AppColors.noteSage),
+      (NoteColor.sky, 'Sky', AppColors.noteSky),
+      (NoteColor.lavender, 'Lavender', AppColors.noteLavender),
+      (NoteColor.peach, 'Peach', AppColors.notePeach),
+      (NoteColor.butter, 'Butter', AppColors.noteButter),
+      (NoteColor.mint, 'Mint', AppColors.noteMint),
+      (NoteColor.rose, 'Rose', AppColors.noteRose),
     ];
 
-    final borderColor = isDark ? GitHubColors.darkBorderDefault : GitHubColors.lightBorderDefault;
-    final bgColor = isDark ? GitHubColors.darkCanvasSubtle : GitHubColors.lightCanvasDefault;
+    final borderColor = isDark ? AppColors.darkBorderMuted : AppColors.lightBorderMuted;
+    final bgColor = isDark ? AppColors.darkCanvasInset : AppColors.lightCanvasDefault;
 
     return PopupMenuButton<NoteColor>(
-      tooltip: 'Label color',
+      tooltip: 'Change note color',
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(12),
         side: BorderSide(color: borderColor),
       ),
-      color: isDark ? GitHubColors.darkCanvasSubtle : GitHubColors.lightCanvasDefault,
+      color: isDark ? AppColors.darkCanvasSubtle : AppColors.lightCanvasDefault,
       child: Container(
-        height: 30,
-        padding: const EdgeInsets.symmetric(horizontal: 8),
+        height: 32,
+        padding: const EdgeInsets.symmetric(horizontal: 9),
         decoration: BoxDecoration(
           color: bgColor,
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(color: borderColor),
         ),
         child: Row(
@@ -438,9 +429,9 @@ class _ColorPicker extends StatelessWidget {
             ),
             const SizedBox(width: 4),
             Icon(
-              Icons.arrow_drop_down,
-              size: 14,
-              color: isDark ? GitHubColors.darkFgMuted : GitHubColors.lightFgMuted,
+              Icons.arrow_drop_down_rounded,
+              size: 16,
+              color: isDark ? AppColors.darkFgMuted : AppColors.lightFgMuted,
             ),
           ],
         ),
@@ -452,14 +443,15 @@ class _ColorPicker extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'LABELS',
+                'NOTE COLOR',
                 style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: isDark ? GitHubColors.darkFgSubtle : GitHubColors.lightFgSubtle,
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.8,
+                  color: isDark ? AppColors.darkFgSubtle : AppColors.lightFgSubtle,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -470,21 +462,21 @@ class _ColorPicker extends StatelessWidget {
                       onColorSelected(c.$1);
                       Navigator.pop(ctx);
                     },
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(8),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
-                        color: c.$3.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(4),
+                        color: c.$3.withValues(alpha: isSelected ? 0.25 : 0.12),
+                        borderRadius: BorderRadius.circular(8),
                         border: Border.all(
                           color: isSelected ? c.$3 : c.$3.withValues(alpha: 0.3),
-                          width: isSelected ? 2 : 1,
+                          width: isSelected ? 1.5 : 1,
                         ),
                       ),
                       child: Text(
                         c.$2,
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 11.5,
                           fontWeight: FontWeight.w600,
                           color: c.$3,
                         ),

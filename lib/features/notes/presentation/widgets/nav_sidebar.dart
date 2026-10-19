@@ -11,8 +11,10 @@ class NavSidebar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final borderColor = isDark ? GitHubColors.darkBorderDefault : GitHubColors.lightBorderDefault;
-    final surfaceColor = isDark ? GitHubColors.darkCanvasSubtle : GitHubColors.lightCanvasSubtle;
+    final borderColor = isDark ? AppColors.darkBorderMuted : AppColors.lightBorderMuted;
+    final surfaceColor = isDark ? AppColors.darkCanvasSubtle : AppColors.lightCanvasSubtle;
+    final fgDefault = isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault;
+    final fgMuted = isDark ? AppColors.darkFgMuted : AppColors.lightFgMuted;
 
     return Container(
       height: double.infinity,
@@ -28,10 +30,10 @@ class NavSidebar extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(height: MediaQuery.of(context).padding.top + 12),
-          // GitHub header / branding
+          SizedBox(height: MediaQuery.of(context).padding.top + 16),
+          // App Logo & Brand Header
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 14),
             child: Row(
               mainAxisAlignment: isExpanded
                   ? MainAxisAlignment.spaceBetween
@@ -40,55 +42,70 @@ class NavSidebar extends ConsumerWidget {
                 if (isExpanded)
                   Row(
                     children: [
-                      // GitHub-style Octocat / App Icon
+                      // Sleek custom gradient app icon badge
                       Container(
-                        width: 26,
-                        height: 26,
+                        width: 28,
+                        height: 28,
                         decoration: BoxDecoration(
-                          color: isDark ? GitHubColors.darkCanvasInset : GitHubColors.lightCanvasDefault,
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: borderColor),
+                          gradient: LinearGradient(
+                            colors: isDark
+                                ? [const Color(0xFF2F81F7), const Color(0xFF8957E5)]
+                                : [const Color(0xFF0969DA), const Color(0xFF8250DF)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: [
+                            BoxShadow(
+                              color: (isDark ? const Color(0xFF2F81F7) : const Color(0xFF0969DA))
+                                  .withValues(alpha: 0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
-                        child: Icon(
-                          Icons.menu_book_rounded,
-                          size: 15,
-                          color: isDark ? GitHubColors.darkFgDefault : GitHubColors.lightFgDefault,
+                        child: const Icon(
+                          Icons.edit_note_rounded,
+                          size: 18,
+                          color: Colors.white,
                         ),
                       ),
                       const SizedBox(width: 10),
                       Text(
                         'NoteEase',
                         style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: isDark ? GitHubColors.darkFgDefault : GitHubColors.lightFgDefault,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.3,
+                          color: fgDefault,
                         ),
                       ),
                     ],
                   ),
-                _GitHubSidebarToggle(
+                _SidebarToggleButton(
                   isExpanded: isExpanded,
                   onToggle: onToggle,
                   isDark: isDark,
+                  borderColor: borderColor,
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
           Divider(color: borderColor, height: 1),
-          const SizedBox(height: 8),
+          const SizedBox(height: 14),
 
-          // GitHub Nav Item Section
+          // Workspace Section
           if (isExpanded)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: Text(
-                'NOTES',
+                'WORKSPACE',
                 style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.5,
-                  color: isDark ? GitHubColors.darkFgSubtle : GitHubColors.lightFgSubtle,
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.8,
+                  color: fgMuted,
                 ),
               ),
             ),
@@ -96,7 +113,6 @@ class NavSidebar extends ConsumerWidget {
             icon: Icons.notes_rounded,
             label: 'All Notes',
             isExpanded: isExpanded,
-            badge: 'active',
             isSelected: true,
             isDark: isDark,
             onTap: () {},
@@ -118,7 +134,7 @@ class NavSidebar extends ConsumerWidget {
 
           const Spacer(),
           Divider(color: borderColor, height: 1),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           _NavItem(
             icon: Icons.settings_outlined,
             label: 'Settings',
@@ -126,45 +142,45 @@ class NavSidebar extends ConsumerWidget {
             isDark: isDark,
             onTap: () => context.push('/settings'),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
         ],
       ),
     );
   }
 }
 
-class _GitHubSidebarToggle extends StatelessWidget {
-  const _GitHubSidebarToggle({
+class _SidebarToggleButton extends StatelessWidget {
+  const _SidebarToggleButton({
     required this.isExpanded,
     required this.onToggle,
     required this.isDark,
+    required this.borderColor,
   });
 
   final bool isExpanded;
   final VoidCallback onToggle;
   final bool isDark;
+  final Color borderColor;
 
   @override
   Widget build(BuildContext context) {
-    final borderColor = isDark ? GitHubColors.darkBorderDefault : GitHubColors.lightBorderDefault;
-    final fgMuted = isDark ? GitHubColors.darkFgMuted : GitHubColors.lightFgMuted;
-
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onToggle,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(8),
         child: Container(
-          width: 28,
-          height: 28,
+          width: 30,
+          height: 30,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(6),
+            color: isDark ? AppColors.darkCanvasInset : AppColors.lightCanvasDefault,
+            borderRadius: BorderRadius.circular(8),
             border: Border.all(color: borderColor, width: 1),
           ),
           child: Icon(
             isExpanded ? Icons.keyboard_double_arrow_left_rounded : Icons.keyboard_double_arrow_right_rounded,
             size: 16,
-            color: fgMuted,
+            color: isDark ? AppColors.darkFgMuted : AppColors.lightFgMuted,
           ),
         ),
       ),
@@ -179,7 +195,6 @@ class _NavItem extends StatelessWidget {
     required this.isExpanded,
     required this.onTap,
     required this.isDark,
-    this.badge,
     this.isSelected = false,
   });
 
@@ -188,32 +203,34 @@ class _NavItem extends StatelessWidget {
   final bool isExpanded;
   final VoidCallback onTap;
   final bool isDark;
-  final String? badge;
   final bool isSelected;
 
   @override
   Widget build(BuildContext context) {
-    final activeBg = isDark ? GitHubColors.darkCanvasInset : GitHubColors.lightCanvasInset;
+    final activeBg = isDark
+        ? AppColors.darkCanvasInset
+        : AppColors.lightCanvasDefault;
     final fgColor = isSelected
-        ? (isDark ? GitHubColors.darkFgDefault : GitHubColors.lightFgDefault)
-        : (isDark ? GitHubColors.darkFgMuted : GitHubColors.lightFgMuted);
+        ? (isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault)
+        : (isDark ? AppColors.darkFgMuted : AppColors.lightFgMuted);
+    final accent = isDark ? AppColors.accent : AppColors.accentLight;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
       child: Material(
         color: isSelected ? activeBg : Colors.transparent,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(9),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(9),
           child: Container(
-            height: 34,
+            height: 38,
             padding: const EdgeInsets.symmetric(horizontal: 10),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(9),
               border: isSelected
                   ? Border.all(
-                      color: isDark ? GitHubColors.darkBorderMuted : GitHubColors.lightBorderMuted,
+                      color: isDark ? AppColors.darkBorderDefault : AppColors.lightBorderDefault,
                       width: 1,
                     )
                   : null,
@@ -223,35 +240,23 @@ class _NavItem extends StatelessWidget {
                   ? MainAxisAlignment.start
                   : MainAxisAlignment.center,
               children: [
-                Icon(icon, size: 16, color: fgColor),
+                Icon(
+                  icon,
+                  size: 17,
+                  color: isSelected ? accent : fgColor,
+                ),
                 if (isExpanded) ...[
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       label,
                       style: TextStyle(
                         fontSize: 13,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                         color: fgColor,
                       ),
                     ),
                   ),
-                  if (badge != null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                      decoration: BoxDecoration(
-                        color: isDark ? GitHubColors.darkBorderMuted : GitHubColors.lightBorderMuted,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        badge!,
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w500,
-                          color: isDark ? GitHubColors.darkFgSubtle : GitHubColors.lightFgSubtle,
-                        ),
-                      ),
-                    ),
                 ],
               ],
             ),
