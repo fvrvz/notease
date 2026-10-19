@@ -23,6 +23,8 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage>
   late AnimationController _toggleController;
   late Animation<double> _toggleAnimation;
   String? _activeNoteId;
+  String? _pendingNoteId;
+  bool _isSwitchingNote = false;
 
   @override
   void initState() {
@@ -50,11 +52,62 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage>
     final current = ref.read(selectedNoteIdProvider);
     if (current == id) {
       // Toggle off if already selected
+      _pendingNoteId = null;
       ref.read(selectedNoteIdProvider.notifier).state = null;
+    } else if (current != null && _toggleController.value > 0.0) {
+      // Switching from an already-open note directly to another note
+      _switchActiveNote(id);
     } else {
-      // Open new note
+      // Open new note from collapsed state
+      _pendingNoteId = null;
       ref.read(selectedNoteIdProvider.notifier).state = id;
     }
+  }
+
+  void _switchActiveNote(String targetId) {
+    if (_isSwitchingNote) {
+      _pendingNoteId = targetId;
+      return;
+    }
+    _isSwitchingNote = true;
+    _pendingNoteId = targetId;
+
+    // 1. Smoothly fold the current note closed
+    _toggleController
+        .animateTo(
+          0.0,
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeInCubic,
+        )
+        .then((_) {
+      if (!mounted) return;
+      final nextId = _pendingNoteId ?? targetId;
+      _pendingNoteId = null;
+
+      // 2. Reposition accordion to the new target note
+      setState(() {
+        _activeNoteId = nextId;
+      });
+      ref.read(selectedNoteIdProvider.notifier).state = nextId;
+
+      // 3. Smoothly unfold the new note open
+      _toggleController
+          .animateTo(
+            1.0,
+            duration: const Duration(milliseconds: 260),
+            curve: Curves.easeOutCubic,
+          )
+          .then((_) {
+        if (mounted) {
+          _isSwitchingNote = false;
+          if (_pendingNoteId != null && _pendingNoteId != nextId) {
+            final queued = _pendingNoteId!;
+            _pendingNoteId = null;
+            _switchActiveNote(queued);
+          }
+        }
+      });
+    });
   }
 
   @override
@@ -70,10 +123,14 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage>
 
     // Listen to selection changes to drive smooth accordion toggle animation
     ref.listen<String?>(selectedNoteIdProvider, (previous, next) {
+      if (_isSwitchingNote) return; // Handled by _switchActiveNote
+
       if (next != null) {
-        setState(() => _activeNoteId = next);
         if (previous == null || _toggleController.value == 0.0) {
+          setState(() => _activeNoteId = next);
           _toggleController.forward(from: 0.0);
+        } else if (previous != next) {
+          _switchActiveNote(next);
         }
       } else {
         _toggleController.reverse().then((_) {
@@ -240,8 +297,8 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage>
     Color borderColor,
     String searchQuery,
   ) {
-    // Keep focus note during collapse animation so strips rebalance smoothly
-    final currentFocusId = selectedId ?? (_toggleController.value > 0 ? _activeNoteId : null);
+    // Focus note drives strip rebalancing and active slot during transitions
+    final currentFocusId = _activeNoteId ?? selectedId;
     final selectedIndex = notes.indexWhere((n) => n.id == currentFocusId);
 
     // Left notes: notes before current focus (or all notes if none selected)
@@ -256,6 +313,8 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage>
     final navWidth = _navExpanded ? 200.0 : 52.0;
     // Comfortable reading width for the opened note
     final noteWidth = (screenWidth - navWidth - 100.0).clamp(440.0, 720.0);
+
+    final highlightedStripId = _pendingNoteId ?? selectedId ?? _activeNoteId;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -285,7 +344,7 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage>
                   NoteAccordionStrip(
                     notes: leftNotes,
                     isLeft: true,
-                    selectedId: selectedId,
+                    selectedId: highlightedStripId,
                     onNoteSelected: _toggleNoteSelection,
                   ),
 
@@ -293,7 +352,7 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage>
                 AnimatedBuilder(
                   animation: _toggleAnimation,
                   builder: (context, _) {
-                    final activeId = selectedId ?? _activeNoteId;
+                    final activeId = _activeNoteId ?? selectedId;
                     final showActiveNote = activeId != null &&
                         notes.any((n) => n.id == activeId) &&
                         (_toggleAnimation.value > 0.0 || selectedId != null);
@@ -328,7 +387,7 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage>
                   NoteAccordionStrip(
                     notes: rightNotes,
                     isLeft: false,
-                    selectedId: selectedId,
+                    selectedId: highlightedStripId,
                     onNoteSelected: _toggleNoteSelection,
                   ),
 
