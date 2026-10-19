@@ -110,7 +110,7 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
         children: [
           // Header Bar
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
               color: headerBg,
               borderRadius: const BorderRadius.vertical(
@@ -120,93 +120,104 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
                 bottom: BorderSide(color: borderColor, width: 1),
               ),
             ),
-            child: Row(
-              children: [
-                // Note Color Dot
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: noteColor,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                // Title Field
-                Expanded(
-                  child: TextField(
-                    controller: _titleController,
-                    onChanged: (_) => _onChanged(),
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault,
-                    ),
-                    decoration: InputDecoration(
-                      filled: false,
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      contentPadding: EdgeInsets.zero,
-                      isDense: true,
-                      hintText: 'Note title...',
-                      hintStyle: TextStyle(
-                        color: isDark ? AppColors.darkFgSubtle : AppColors.lightFgSubtle,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final showFormatting = constraints.maxWidth >= 540;
+                return Row(
+                  children: [
+                    // Note Color Dot
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: noteColor,
+                        shape: BoxShape.circle,
                       ),
                     ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                // Quick Markdown Formatting Buttons
-                _QuickFormatBar(controller: _contentController, isDark: isDark, borderColor: borderColor),
-                const SizedBox(width: 8),
-                _ColorPicker(
-                  selected: _currentNote?.color ?? NoteColor.sage,
-                  isDark: isDark,
-                  borderColor: borderColor,
-                  onColorSelected: (color) {
-                    if (_currentNote != null) {
-                      setState(() => _currentNote = _currentNote!.copyWith(color: color));
-                      ref.read(notesNotifierProvider.notifier).updateNote(
-                            _currentNote!.copyWith(color: color),
-                          );
-                    }
-                  },
-                ),
-                const SizedBox(width: 6),
-                _HeaderIconButton(
-                  tooltip: _currentNote?.isPinned == true ? 'Unpin' : 'Pin',
-                  icon: _currentNote?.isPinned == true
-                      ? Icons.push_pin_rounded
-                      : Icons.push_pin_outlined,
-                  active: _currentNote?.isPinned == true,
-                  isDark: isDark,
-                  borderColor: borderColor,
-                  onTap: () {
-                    if (_currentNote != null) {
-                      ref.read(notesNotifierProvider.notifier).togglePin(_currentNote!);
-                      setState(() => _currentNote = _currentNote!.copyWith(
-                            isPinned: !_currentNote!.isPinned,
-                          ));
-                    }
-                  },
-                ),
-                const SizedBox(width: 6),
-                _HeaderIconButton(
-                  tooltip: 'Delete',
-                  icon: Icons.delete_outline_rounded,
-                  isDanger: true,
-                  isDark: isDark,
-                  borderColor: borderColor,
-                  onTap: () {
-                    if (_currentNote != null) {
-                      ref.read(notesNotifierProvider.notifier).deleteNote(_currentNote!.id);
-                    }
-                  },
-                ),
-              ],
+                    const SizedBox(width: 10),
+                    // Title Field
+                    Expanded(
+                      child: TextField(
+                        controller: _titleController,
+                        onChanged: (_) => _onChanged(),
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault,
+                        ),
+                        decoration: InputDecoration(
+                          filled: false,
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          contentPadding: EdgeInsets.zero,
+                          isDense: true,
+                          hintText: 'Note title...',
+                          hintStyle: TextStyle(
+                            color: isDark ? AppColors.darkFgSubtle : AppColors.lightFgSubtle,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Quick Markdown Formatting Buttons (shown when width permits)
+                    if (showFormatting) ...[
+                      _QuickFormatBar(
+                        controller: _contentController,
+                        isDark: isDark,
+                        borderColor: borderColor,
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    _ColorPicker(
+                      selected: _currentNote?.color ?? NoteColor.sage,
+                      isDark: isDark,
+                      borderColor: borderColor,
+                      onColorSelected: (color) {
+                        if (_currentNote != null) {
+                          setState(() => _currentNote = _currentNote!.copyWith(color: color));
+                          ref.read(notesNotifierProvider.notifier).updateNote(
+                                _currentNote!.copyWith(color: color),
+                              );
+                        }
+                      },
+                    ),
+                    const SizedBox(width: 4),
+                    _HeaderIconButton(
+                      tooltip: _currentNote?.isPinned == true ? 'Unpin' : 'Pin',
+                      icon: _currentNote?.isPinned == true
+                          ? Icons.push_pin_rounded
+                          : Icons.push_pin_outlined,
+                      active: _currentNote?.isPinned == true,
+                      isDark: isDark,
+                      borderColor: borderColor,
+                      onTap: () {
+                        if (_currentNote != null) {
+                          ref.read(notesNotifierProvider.notifier).togglePin(_currentNote!);
+                          setState(() => _currentNote = _currentNote!.copyWith(
+                                isPinned: !_currentNote!.isPinned,
+                              ));
+                        }
+                      },
+                    ),
+                    const SizedBox(width: 4),
+                    _HeaderIconButton(
+                      tooltip: 'Delete',
+                      icon: Icons.delete_outline_rounded,
+                      isDanger: true,
+                      isDark: isDark,
+                      borderColor: borderColor,
+                      onTap: () {
+                        if (_currentNote != null) {
+                          ref.read(notesNotifierProvider.notifier).deleteNote(_currentNote!.id);
+                        }
+                      },
+                    ),
+                  ],
+                );
+              },
             ),
           ),
 
@@ -251,62 +262,67 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
                   bottom: Radius.circular(AppTheme.radius),
                 ),
               ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.access_time_rounded,
-                    size: 12,
-                    color: isDark ? AppColors.darkFgSubtle : AppColors.lightFgSubtle,
-                  ),
-                  const SizedBox(width: 5),
-                  Text(
-                    'Updated ${DateFormat.yMMMd().format(_currentNote!.updatedAt)}',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: isDark ? AppColors.darkFgSubtle : AppColors.lightFgSubtle,
-                    ),
-                  ),
-                  if (_currentNote!.tags.isNotEmpty) ...[
-                    const SizedBox(width: 8),
-                    Text(
-                      '•',
-                      style: TextStyle(
-                        fontSize: 11,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final isCompact = constraints.maxWidth < 460;
+                  return Row(
+                    children: [
+                      Icon(
+                        Icons.access_time_rounded,
+                        size: 12,
                         color: isDark ? AppColors.darkFgSubtle : AppColors.lightFgSubtle,
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    ..._currentNote!.tags.map(
-                      (tag) => Padding(
-                        padding: const EdgeInsets.only(right: 6),
-                        child: Text(
-                          '#$tag',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: isDark ? AppColors.darkFgMuted : AppColors.lightFgMuted,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                  const Spacer(),
-                  ValueListenableBuilder<TextEditingValue>(
-                    valueListenable: _contentController,
-                    builder: (context, value, _) {
-                      final words = value.text.trim().isEmpty
-                          ? 0
-                          : value.text.trim().split(RegExp(r'\s+')).length;
-                      return Text(
-                        '$words words',
+                      const SizedBox(width: 5),
+                      Text(
+                        'Updated ${DateFormat.yMMMd().format(_currentNote!.updatedAt)}',
                         style: TextStyle(
                           fontSize: 11,
                           color: isDark ? AppColors.darkFgSubtle : AppColors.lightFgSubtle,
                         ),
-                      );
-                    },
-                  ),
-                ],
+                      ),
+                      if (!isCompact && _currentNote!.tags.isNotEmpty) ...[
+                        const SizedBox(width: 8),
+                        Text(
+                          '•',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isDark ? AppColors.darkFgSubtle : AppColors.lightFgSubtle,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        ..._currentNote!.tags.take(2).map(
+                              (tag) => Padding(
+                                padding: const EdgeInsets.only(right: 6),
+                                child: Text(
+                                  '#$tag',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: isDark ? AppColors.darkFgMuted : AppColors.lightFgMuted,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ),
+                      ],
+                      const Spacer(),
+                      ValueListenableBuilder<TextEditingValue>(
+                        valueListenable: _contentController,
+                        builder: (context, value, _) {
+                          final words = value.text.trim().isEmpty
+                              ? 0
+                              : value.text.trim().split(RegExp(r'\s+')).length;
+                          return Text(
+                            '$words words',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: isDark ? AppColors.darkFgSubtle : AppColors.lightFgSubtle,
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
         ],

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 /// Clean, flat palette using GitHub Primer's canvas, surface, and text colors.
 /// No shadows, no gradients.
@@ -135,7 +134,18 @@ class AppTheme {
   }
 
   static TextTheme _buildTextTheme(Color primary, Color muted) {
-    final base = GoogleFonts.interTextTheme();
+    const fontFallbacks = [
+      '-apple-system',
+      'BlinkMacSystemFont',
+      'Segoe UI',
+      'Roboto',
+      'Helvetica Neue',
+      'sans-serif',
+    ];
+    final base = ThemeData.light().textTheme.apply(
+      fontFamily: 'Inter',
+      fontFamilyFallback: fontFallbacks,
+    );
     return base.copyWith(
       displayLarge: base.displayLarge?.copyWith(
         color: primary,

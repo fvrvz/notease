@@ -251,11 +251,13 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage> {
               transitionBuilder: (child, animation) {
                 return FadeTransition(
                   opacity: animation,
-                  child: SizeTransition(
-                    sizeFactor: animation,
-                    axis: Axis.horizontal,
-                    alignment: Alignment.centerLeft,
-                    child: child,
+                  child: ClipRect(
+                    child: SizeTransition(
+                      sizeFactor: animation,
+                      axis: Axis.horizontal,
+                      alignment: Alignment.centerLeft,
+                      child: child,
+                    ),
                   ),
                 );
               },
@@ -263,8 +265,14 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage> {
                   ? Padding(
                       key: ValueKey(selectedId),
                       padding: const EdgeInsets.all(8),
-                      child: NoteContentPanel(
-                        noteId: selectedId,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(
+                          minWidth: 320,
+                          maxWidth: 860,
+                        ),
+                        child: NoteContentPanel(
+                          noteId: selectedId,
+                        ),
                       ),
                     )
                   : Padding(
