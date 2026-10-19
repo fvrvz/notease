@@ -1,0 +1,77 @@
+name: Branch Policy & Conventional Commits
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+      - dev
+    types: [opened, synchronize, reopened, edited]
+
+jobs:
+  validate-branch-and-commits:
+    name: Validate Branch & Commits
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate Source Branch for Target
+        run: |
+          TARGET_BRANCH="${{ github.base_ref }}"
+          SOURCE_BRANCH="${{ github.head_ref }}"
+          echo "Target branch: $TARGET_BRANCH"
+          echo "Source branch: $SOURCE_BRANCH"
+
+          if [ "$TARGET_BRANCH" = "main" ]; then
+            # Main only allows merges from dev, develop, or hotfix/*
+            if [[ "$SOURCE_BRANCH" =~ ^(dev|develop|hotfix/.+)$ ]]; then
+              echo "✅ Branch '$SOURCE_BRANCH' is authorized to merge into main."
+            else
+              echo "❌ ERROR: Only 'dev', 'develop', or 'hotfix/*' branches can be merged into main."
+              echo "Received branch: '$SOURCE_BRANCH'"
+              exit 1
+            fi
+          elif [ "$TARGET_BRANCH" = "develop" ] || [ "$TARGET_BRANCH" = "dev" ]; then
+            # Dev/develop allows feature/*, bugfix/*, doc/*, refactor/*, hotfix/*
+            if [[ "$SOURCE_BRANCH" =~ ^(feature|bugfix|doc|refactor|hotfix)/.+ ]]; then
+              echo "✅ Branch '$SOURCE_BRANCH' adheres to naming conventions."
+            else
+              echo "❌ ERROR: Branch '$SOURCE_BRANCH' must follow naming convention:"
+              echo "   feature/*, bugfix/*, doc/*, refactor/*, or hotfix/*"
+              exit 1
+            fi
+          fi
+
+      - name: Validate Conventional Commits
+        run: |
+          CONVENTIONAL_REGEX="^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9_-]+\))?: .+"
+          
+          echo "Checking commits in range origin/${{ github.base_ref }}..HEAD..."
+          
+          INVALID_COMMITS=0
+          while IFS= read -r commit_hash; do
+            COMMIT_MSG=$(git log -1 --format=%s "$commit_hash")
+            echo "Checking [$commit_hash]: $COMMIT_MSG"
+            if [[ ! "$COMMIT_MSG" =~ $CONVENTIONAL_REGEX ]]; then
+              echo "❌ Non-conventional commit: '$COMMIT_MSG'"
+              INVALID_COMMITS=$((INVALID_COMMITS + 1))
+            fi
+          done < <(git rev-list "origin/${{ github.base_ref }}..HEAD")
+
+          # Also validate PR title for squash merges
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          echo "Checking PR Title: $PR_TITLE"
+          if [[ ! "$PR_TITLE" =~ $CONVENTIONAL_REGEX ]]; then
+            echo "⚠️ Warning: PR title is not in conventional commit format."
+          fi
+
+          if [ $INVALID_COMMITS -gt 0 ]; then
+            echo "❌ $INVALID_COMMITS commit(s) failed conventional commit validation."
+            echo "Commit messages should follow format: <type>(<optional scope>): <subject>"
+            echo "Examples: feat: add note search, fix: resolve alignment issue, docs: update readme"
+            exit 1
+          fi
+          echo "✅ All commits adhere to Conventional Commits specification."
