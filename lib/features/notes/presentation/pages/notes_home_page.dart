@@ -16,14 +16,45 @@ class NotesHomePage extends ConsumerStatefulWidget {
   ConsumerState<NotesHomePage> createState() => _NotesHomePageState();
 }
 
-class _NotesHomePageState extends ConsumerState<NotesHomePage> {
+class _NotesHomePageState extends ConsumerState<NotesHomePage>
+    with SingleTickerProviderStateMixin {
   bool _navExpanded = true;
   final TextEditingController _searchController = TextEditingController();
+  late AnimationController _toggleController;
+  late Animation<double> _toggleAnimation;
+  String? _activeNoteId;
+
+  @override
+  void initState() {
+    super.initState();
+    _toggleController = AnimationController(
+      duration: const Duration(milliseconds: 360),
+      reverseDuration: const Duration(milliseconds: 280),
+      vsync: this,
+    );
+    _toggleAnimation = CurvedAnimation(
+      parent: _toggleController,
+      curve: Curves.easeInOutCubic,
+      reverseCurve: Curves.easeInOutCubic,
+    );
+  }
 
   @override
   void dispose() {
+    _toggleController.dispose();
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _toggleNoteSelection(String id) {
+    final current = ref.read(selectedNoteIdProvider);
+    if (current == id) {
+      // Toggle off if already selected
+      ref.read(selectedNoteIdProvider.notifier).state = null;
+    } else {
+      // Open new note
+      ref.read(selectedNoteIdProvider.notifier).state = id;
+    }
   }
 
   @override
@@ -36,6 +67,25 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final borderColor = isDark ? AppColors.darkBorderDefault : AppColors.lightBorderDefault;
     final headerBg = isDark ? AppColors.darkCanvasSubtle : AppColors.lightCanvasDefault;
+
+    // Listen to selection changes to drive smooth accordion toggle animation
+    ref.listen<String?>(selectedNoteIdProvider, (previous, next) {
+      if (next != null) {
+        setState(() => _activeNoteId = next);
+        if (previous == null || _toggleController.value == 0.0) {
+          _toggleController.forward(from: 0.0);
+        }
+      } else {
+        _toggleController.reverse().then((_) {
+          if (mounted) setState(() => _activeNoteId = null);
+        });
+      }
+    });
+
+    if (selectedId != null && _activeNoteId == null) {
+      _activeNoteId = selectedId;
+      _toggleController.value = 1.0;
+    }
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkCanvasDefault : AppColors.lightCanvasSubtle,
@@ -119,58 +169,39 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage> {
                 ),
                 decoration: InputDecoration(
                   filled: false,
-                  isDense: true,
-                  hintText: 'Search title, content, date, tags...',
+                  hintText: 'Search notes by title, content, date, tags...',
                   hintStyle: TextStyle(
-                    fontSize: 13,
-                    height: 1.2,
-                    color: isDark ? AppColors.darkFgSubtle : AppColors.lightFgSubtle,
+                    color: fgMuted,
+                    fontSize: 12.5,
                   ),
                   prefixIcon: Icon(
                     Icons.search_rounded,
-                    size: 15,
+                    size: 16,
                     color: fgMuted,
                   ),
-                  prefixIconConstraints: const BoxConstraints(
-                    minWidth: 32,
-                    minHeight: 32,
-                    maxWidth: 32,
-                    maxHeight: 32,
-                  ),
+                  prefixIconConstraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                   suffixIcon: searchQuery.isNotEmpty
                       ? IconButton(
-                          icon: const Icon(Icons.close_rounded, size: 14),
-                          color: fgMuted,
+                          icon: Icon(Icons.close_rounded, size: 14, color: fgMuted),
                           padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(
-                            minWidth: 28,
-                            minHeight: 32,
-                            maxWidth: 28,
-                            maxHeight: 32,
-                          ),
-                          splashRadius: 14,
-                          tooltip: 'Clear search',
+                          constraints: const BoxConstraints(),
                           onPressed: () {
                             _searchController.clear();
                             ref.read(searchQueryProvider.notifier).state = '';
                           },
                         )
                       : null,
-                  suffixIconConstraints: const BoxConstraints(
-                    minWidth: 28,
-                    minHeight: 32,
-                    maxWidth: 28,
-                    maxHeight: 32,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                  isDense: true,
                   border: InputBorder.none,
                   enabledBorder: InputBorder.none,
                   focusedBorder: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 7),
                 ),
               ),
             ),
           ),
           const SizedBox(width: 12),
+          // New Note Button
           Material(
             color: accent,
             borderRadius: BorderRadius.circular(AppTheme.radius),
@@ -209,8 +240,11 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage> {
     Color borderColor,
     String searchQuery,
   ) {
-    final selectedIndex = notes.indexWhere((n) => n.id == selectedId);
-    // When no note is selected or when searching, all notes float on the LEFT
+    // Keep focus note during collapse animation so strips rebalance smoothly
+    final currentFocusId = selectedId ?? (_toggleController.value > 0 ? _activeNoteId : null);
+    final selectedIndex = notes.indexWhere((n) => n.id == currentFocusId);
+
+    // Left notes: notes before current focus (or all notes if none selected)
     final leftNotes = selectedIndex > 0
         ? notes.sublist(0, selectedIndex)
         : (selectedIndex < 0 ? notes : <Note>[]);
@@ -237,64 +271,60 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage> {
           NoteAccordionStrip(
             notes: leftNotes,
             isLeft: true,
-            onNoteSelected: (id) {
-              ref.read(selectedNoteIdProvider.notifier).state = id;
-            },
+            selectedId: selectedId,
+            onNoteSelected: _toggleNoteSelection,
           ),
 
-        // Left-aligned Active Note Panel with smooth ease-in-out expand/collapse animation
+        // Active Note Panel with smooth ease-in-out expand/collapse animation OR Empty State
         Expanded(
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 320),
-              reverseDuration: const Duration(milliseconds: 260),
-              switchInCurve: Curves.easeInOutCubic,
-              switchOutCurve: Curves.easeInOutCubic,
-              transitionBuilder: (child, animation) {
-                final curved = CurvedAnimation(
-                  parent: animation,
-                  curve: Curves.easeInOutCubic,
-                  reverseCurve: Curves.easeInOutCubic,
-                );
-                return FadeTransition(
-                  opacity: curved,
-                  child: ClipRect(
-                    child: SizeTransition(
-                      sizeFactor: curved,
-                      axis: Axis.horizontal,
-                      alignment: Alignment.centerLeft,
-                      child: child,
-                    ),
+          child: AnimatedBuilder(
+            animation: _toggleAnimation,
+            builder: (context, _) {
+              final activeId = selectedId ?? _activeNoteId;
+              final showActiveNote = activeId != null &&
+                  notes.any((n) => n.id == activeId) &&
+                  (_toggleAnimation.value > 0.0 || selectedId != null);
+
+              if (!showActiveNote) {
+                // When completely collapsed, show Empty State
+                return Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: EmptyState(
+                    title: searchQuery.isNotEmpty ? 'No matching notes' : null,
+                    message: searchQuery.isNotEmpty
+                        ? 'No notes matched "$searchQuery". Try searching by title, content, date, color, or tags.'
+                        : 'Click any note strip to expand it, or click + to create a new note.',
+                    icon: searchQuery.isNotEmpty ? Icons.search_off_rounded : null,
                   ),
                 );
-              },
-              child: selectedId != null && notes.any((n) => n.id == selectedId)
-                  ? Padding(
-                      key: ValueKey(selectedId),
-                      padding: const EdgeInsets.all(8),
-                      child: ConstrainedBox(
+              }
+
+              // Smooth horizontal expansion & collapse using widthFactor
+              return Align(
+                alignment: Alignment.centerLeft,
+                child: ClipRect(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    widthFactor: _toggleAnimation.value,
+                    child: FadeTransition(
+                      opacity: _toggleAnimation,
+                      child: Container(
                         constraints: const BoxConstraints(
                           minWidth: 320,
                           maxWidth: 860,
                         ),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
                         child: NoteContentPanel(
-                          noteId: selectedId,
+                          key: ValueKey(activeId),
+                          noteId: activeId,
+                          onCollapse: () => _toggleNoteSelection(activeId),
                         ),
                       ),
-                    )
-                  : Padding(
-                      key: ValueKey('empty_state_${searchQuery.isNotEmpty}'),
-                      padding: const EdgeInsets.all(16),
-                      child: EmptyState(
-                        title: searchQuery.isNotEmpty ? 'No matching notes' : null,
-                        message: searchQuery.isNotEmpty
-                            ? 'No notes matched "$searchQuery". Try searching by title, content, date, color, or tags.'
-                            : null,
-                        icon: searchQuery.isNotEmpty ? Icons.search_off_rounded : null,
-                      ),
                     ),
-            ),
+                  ),
+                ),
+              );
+            },
           ),
         ),
 
@@ -303,9 +333,8 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage> {
           NoteAccordionStrip(
             notes: rightNotes,
             isLeft: false,
-            onNoteSelected: (id) {
-              ref.read(selectedNoteIdProvider.notifier).state = id;
-            },
+            selectedId: selectedId,
+            onNoteSelected: _toggleNoteSelection,
           ),
       ],
     );
@@ -318,35 +347,57 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage> {
     Color borderColor,
     String searchQuery,
   ) {
-    if (selectedId != null && notes.any((n) => n.id == selectedId)) {
-      return Padding(
-        padding: const EdgeInsets.all(8),
-        child: NoteContentPanel(noteId: selectedId, key: ValueKey(selectedId)),
-      );
-    }
-
-    if (notes.isEmpty) {
-      return EmptyState(
-        title: searchQuery.isNotEmpty ? 'No matching notes' : null,
-        message: searchQuery.isNotEmpty
-            ? 'No notes matched "$searchQuery". Try searching by title, content, date, color, or tags.'
-            : null,
-        icon: searchQuery.isNotEmpty ? Icons.search_off_rounded : null,
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      itemCount: notes.length,
-      itemBuilder: (ctx, i) {
-        final note = notes[i];
-        return _MobileNoteCard(
-          note: note,
-          isDark: isDark,
-          borderColor: borderColor,
-          onTap: () => ref.read(selectedNoteIdProvider.notifier).state = note.id,
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 280),
+      switchInCurve: Curves.easeInOutCubic,
+      switchOutCurve: Curves.easeInOutCubic,
+      transitionBuilder: (child, animation) {
+        return FadeTransition(
+          opacity: animation,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0.04, 0),
+              end: Offset.zero,
+            ).animate(animation),
+            child: child,
+          ),
         );
       },
+      child: (selectedId != null && notes.any((n) => n.id == selectedId))
+          ? Padding(
+              key: ValueKey(selectedId),
+              padding: const EdgeInsets.all(8),
+              child: NoteContentPanel(
+                noteId: selectedId,
+                onCollapse: () => ref.read(selectedNoteIdProvider.notifier).state = null,
+              ),
+            )
+          : (notes.isEmpty
+              ? Padding(
+                  key: const ValueKey('empty_mobile'),
+                  padding: const EdgeInsets.all(16),
+                  child: EmptyState(
+                    title: searchQuery.isNotEmpty ? 'No matching notes' : null,
+                    message: searchQuery.isNotEmpty
+                        ? 'No notes matched "$searchQuery".'
+                        : null,
+                    icon: searchQuery.isNotEmpty ? Icons.search_off_rounded : null,
+                  ),
+                )
+              : ListView.builder(
+                  key: const ValueKey('list_mobile'),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  itemCount: notes.length,
+                  itemBuilder: (ctx, i) {
+                    final note = notes[i];
+                    return _MobileNoteCard(
+                      note: note,
+                      isDark: isDark,
+                      borderColor: borderColor,
+                      onTap: () => _toggleNoteSelection(note.id),
+                    );
+                  },
+                )),
     );
   }
 }
@@ -385,99 +436,98 @@ class _MobileNoteCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final color = _noteColor(note.color);
+    final cardBg = isDark ? AppColors.darkCanvasSubtle : AppColors.lightCanvasDefault;
     final fgDefault = isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault;
     final fgMuted = isDark ? AppColors.darkFgMuted : AppColors.lightFgMuted;
-    final color = _noteColor(note.color);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkCanvasSubtle : AppColors.lightCanvasDefault,
-        borderRadius: BorderRadius.circular(AppTheme.radius),
-        border: Border.all(color: borderColor, width: 1),
-      ),
-      child: ListTile(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: InkWell(
         onTap: onTap,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        title: Row(
-          children: [
-            Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                note.title.isEmpty ? 'Untitled note' : note.title,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: fgDefault,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+        borderRadius: BorderRadius.circular(AppTheme.radius),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: cardBg,
+            borderRadius: BorderRadius.circular(AppTheme.radius),
+            border: Border.all(color: borderColor, width: 1),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 7,
+                    height: 7,
+                    decoration: BoxDecoration(
+                      color: color,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      note.title.isEmpty ? 'Untitled note' : note.title,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: fgDefault,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (note.isPinned) ...[
+                    const SizedBox(width: 4),
+                    Icon(Icons.push_pin_rounded, size: 13, color: color),
+                  ],
+                ],
               ),
-            ),
-            if (note.isPinned)
-              Icon(
-                Icons.push_pin_rounded,
-                size: 14,
-                color: isDark ? AppColors.accent : AppColors.accentLight,
-              ),
-          ],
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (note.content.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(
+              if (note.content.isNotEmpty) ...[
+                const SizedBox(height: 5),
+                Text(
                   note.content,
                   style: TextStyle(
                     fontSize: 12.5,
-                    height: 1.4,
                     color: fgMuted,
+                    height: 1.4,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-              ),
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                Icon(
-                  Icons.calendar_today_outlined,
-                  size: 11,
-                  color: fgMuted,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  DateFormat.yMMMd().format(note.updatedAt),
-                  style: TextStyle(fontSize: 11, color: fgMuted),
-                ),
-                if (note.tags.isNotEmpty) ...[
-                  const SizedBox(width: 8),
-                  ...note.tags.take(3).map(
-                        (tag) => Container(
-                          margin: const EdgeInsets.only(right: 4),
-                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                          decoration: BoxDecoration(
-                            color: isDark ? AppColors.darkCanvasInset : AppColors.lightCanvasInset,
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(color: borderColor, width: 0.8),
-                          ),
-                          child: Text(
-                            '#$tag',
-                            style: TextStyle(fontSize: 10, color: fgMuted),
+              ],
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Text(
+                    DateFormat.yMMMd().format(note.updatedAt),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: isDark ? AppColors.darkFgSubtle : AppColors.lightFgSubtle,
+                    ),
+                  ),
+                  if (note.tags.isNotEmpty) ...[
+                    const Spacer(),
+                    ...note.tags.take(3).map(
+                          (tag) => Padding(
+                            padding: const EdgeInsets.only(left: 6),
+                            child: Text(
+                              '#$tag',
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                color: isDark ? AppColors.darkFgMuted : AppColors.lightFgMuted,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
+                  ],
                 ],
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );
