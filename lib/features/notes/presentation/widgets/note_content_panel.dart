@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:notease/core/theme/app_theme.dart';
@@ -10,8 +10,16 @@ import 'package:notease/features/notes/presentation/widgets/markdown_controller.
 import 'dart:async';
 
 class NoteContentPanel extends ConsumerStatefulWidget {
-  const NoteContentPanel({super.key, required this.noteId});
+  const NoteContentPanel({
+    super.key,
+    required this.noteId,
+    this.onCollapse,
+    this.isFullyExpanded = true,
+  });
+
   final String noteId;
+  final VoidCallback? onCollapse;
+  final bool isFullyExpanded;
 
   @override
   ConsumerState<NoteContentPanel> createState() => _NoteContentPanelState();
@@ -22,7 +30,6 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
   late MarkdownSyntaxTextEditingController _contentController;
   Timer? _debounce;
   Note? _currentNote;
-  bool _isPreviewMode = false;
 
   @override
   void initState() {
@@ -52,7 +59,17 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
 
   @override
   void dispose() {
-    _debounce?.cancel();
+    if (_debounce?.isActive == true && _currentNote != null) {
+      _debounce?.cancel();
+      ref.read(notesNotifierProvider.notifier).updateNote(
+        _currentNote!.copyWith(
+          title: _titleController.text,
+          content: _contentController.text,
+        ),
+      );
+    } else {
+      _debounce?.cancel();
+    }
     _titleController.dispose();
     _contentController.dispose();
     super.dispose();
@@ -94,6 +111,7 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    _contentController.updateTheme(isDark);
     final borderColor = isDark ? AppColors.darkBorderDefault : AppColors.lightBorderDefault;
     final canvasColor = isDark ? AppColors.darkCanvasDefault : AppColors.lightCanvasDefault;
     final headerBg = isDark ? AppColors.darkCanvasSubtle : AppColors.lightCanvasSubtle;
@@ -101,41 +119,88 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
         ? _getNoteColor(_currentNote!.color)
         : (isDark ? AppColors.accent : AppColors.accentLight);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: canvasColor,
-        borderRadius: BorderRadius.circular(AppTheme.radius),
-        border: Border.all(color: borderColor, width: 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Header Bar
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: headerBg,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(AppTheme.radius),
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.escape): () {
+          if (widget.onCollapse != null) {
+            widget.onCollapse!();
+          } else {
+            ref.read(selectedNoteIdProvider.notifier).state = null;
+          }
+        },
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: canvasColor,
+          borderRadius: BorderRadius.circular(AppTheme.radius),
+          border: Border.all(color: borderColor, width: 1),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Header Bar
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: headerBg,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(AppTheme.radius),
+                ),
+                border: Border(
+                  bottom: BorderSide(color: borderColor, width: 1),
+                ),
               ),
-              border: Border(
-                bottom: BorderSide(color: borderColor, width: 1),
-              ),
-            ),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final showFormatting = constraints.maxWidth >= 540;
-                return Row(
-                  children: [
-                    // Note Color Dot
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: noteColor,
-                        shape: BoxShape.circle,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final showFormatting = constraints.maxWidth >= 540;
+                  return Row(
+                    children: [
+                      // Collapse / Toggle Note Button (hidden during expansion animation)
+                      AnimatedOpacity(
+                        duration: const Duration(milliseconds: 150),
+                        opacity: widget.isFullyExpanded ? 1.0 : 0.0,
+                        curve: Curves.easeOutCubic,
+                        child: widget.isFullyExpanded
+                            ? Tooltip(
+                                message: 'Collapse note (Esc)',
+                                child: InkWell(
+                                  onTap: () {
+                                    if (widget.onCollapse != null) {
+                                      widget.onCollapse!();
+                                    } else {
+                                      ref.read(selectedNoteIdProvider.notifier).state = null;
+                                    }
+                                  },
+                                  borderRadius: BorderRadius.circular(AppTheme.radius),
+                                  child: Container(
+                                    width: 26,
+                                    height: 26,
+                                    alignment: Alignment.center,
+                                    decoration: BoxDecoration(
+                                      color: isDark ? AppColors.darkCanvasInset : AppColors.lightCanvasInset,
+                                      borderRadius: BorderRadius.circular(AppTheme.radius),
+                                      border: Border.all(color: borderColor, width: 1),
+                                    ),
+                                    child: Icon(
+                                      Icons.chevron_left_rounded,
+                                      size: 18,
+                                      color: isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault,
+                                    ),
+                                  ),
+                                ),
+                              )
+                            : const SizedBox(width: 26, height: 26),
                       ),
-                    ),
+                      const SizedBox(width: 8),
+                      // Note Color Dot
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: noteColor,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
                     const SizedBox(width: 10),
                     // Title Field
                     Expanded(
@@ -188,19 +253,6 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
                     ),
                     const SizedBox(width: 4),
                     _HeaderIconButton(
-                      tooltip: _isPreviewMode ? 'Switch to Edit' : 'Preview Note',
-                      icon: _isPreviewMode
-                          ? Icons.edit_outlined
-                          : Icons.visibility_outlined,
-                      active: _isPreviewMode,
-                      isDark: isDark,
-                      borderColor: borderColor,
-                      onTap: () {
-                        setState(() => _isPreviewMode = !_isPreviewMode);
-                      },
-                    ),
-                    const SizedBox(width: 4),
-                    _HeaderIconButton(
                       tooltip: _currentNote?.isPinned == true ? 'Unpin' : 'Pin',
                       icon: _currentNote?.isPinned == true
                           ? Icons.push_pin_rounded
@@ -236,69 +288,19 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
             ),
           ),
 
-          // Real-time WYSIWYG / Markdown Editor or Pure Preview Area
+          // Real-time WYSIWYG Markdown Editor
           Expanded(
-            child: _isPreviewMode
-                ? Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                    child: Markdown(
-                      data: _contentController.text.trim().isEmpty
-                          ? '*No content in note yet. Switch to Edit mode to start writing.*'
-                          : _contentController.text,
-                      selectable: true,
-                      padding: EdgeInsets.zero,
-                      styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
-                        p: TextStyle(
-                          fontSize: 14,
-                          height: 1.6,
-                          color: isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault,
-                        ),
-                        h1: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.5,
-                          color: isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault,
-                        ),
-                        h2: TextStyle(
-                          fontSize: 19,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -0.3,
-                          color: isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault,
-                        ),
-                        h3: TextStyle(
-                          fontSize: 15.5,
-                          fontWeight: FontWeight.w600,
-                          color: isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault,
-                        ),
-                        code: TextStyle(
-                          fontFamily: 'monospace',
-                          fontSize: 13,
-                          color: isDark ? const Color(0xFF58A6FF) : const Color(0xFF0969DA),
-                          backgroundColor: isDark ? const Color(0xFF161B22) : const Color(0xFFF0F2F5),
-                        ),
-                        blockquoteDecoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF161B22) : const Color(0xFFF6F8FA),
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border(
-                            left: BorderSide(
-                              color: isDark ? AppColors.accent : AppColors.accentLight,
-                              width: 3,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  )
-                : Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    child: TextField(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: TextField(
                       controller: _contentController,
                       onChanged: (_) => _onChanged(),
+                      inputFormatters: [SmartMarkdownTextInputFormatter()],
                       maxLines: null,
                       expands: true,
                       style: TextStyle(
-                        height: 1.6,
-                        fontSize: 14,
+                        height: 1.65,
+                        fontSize: 14.5,
                         color: isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault,
                       ),
                       decoration: InputDecoration(
@@ -307,11 +309,11 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
                         enabledBorder: InputBorder.none,
                         focusedBorder: InputBorder.none,
                         contentPadding: EdgeInsets.zero,
-                        hintText: 'Start writing markdown here (# Header, **bold**, *italic*, `code`, - list)...',
+                        hintText: 'Start writing markdown (# Heading, - Bullet, 1. List, - [ ] Task)...',
                         hintStyle: TextStyle(
                           color: isDark ? AppColors.darkFgSubtle : AppColors.lightFgSubtle,
-                          fontSize: 14,
-                          height: 1.6,
+                          fontSize: 14.5,
+                          height: 1.65,
                         ),
                       ),
                       textAlignVertical: TextAlignVertical.top,
@@ -391,7 +393,8 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
                 },
               ),
             ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -408,7 +411,7 @@ class _QuickFormatBar extends StatelessWidget {
   final bool isDark;
   final Color borderColor;
 
-  void _insertMarkdown(String prefix, String suffix) {
+  void _insertInline(String prefix, String suffix) {
     final text = controller.text;
     final selection = controller.selection;
     if (!selection.isValid) {
@@ -426,6 +429,44 @@ class _QuickFormatBar extends StatelessWidget {
     );
   }
 
+  void _toggleLinePrefix(String prefix) {
+    final text = controller.text;
+    final selection = controller.selection;
+    final offset = selection.isValid ? selection.baseOffset : text.length;
+
+    int lineStart = offset - 1;
+    while (lineStart >= 0 && lineStart < text.length && text[lineStart] != '\n') {
+      lineStart--;
+    }
+    lineStart++; // Start of the line
+
+    int lineEnd = offset;
+    while (lineEnd < text.length && text[lineEnd] != '\n') {
+      lineEnd++;
+    }
+
+    final currentLine = (lineStart <= lineEnd && lineEnd <= text.length)
+        ? text.substring(lineStart, lineEnd)
+        : '';
+
+    // Strip any existing heading or list prefix
+    final cleanLine = currentLine.replaceFirst(
+      RegExp(r'^(#{1,6}\s+|[-*•+]\s+|\d+\.\s+|-\s*\[[ xX]?\]\s+|>\s*)'),
+      '',
+    );
+
+    final newLine = currentLine.startsWith(prefix) ? cleanLine : '$prefix$cleanLine';
+    final newText = text.replaceRange(lineStart, lineEnd, newLine);
+
+    final diff = newLine.length - currentLine.length;
+    final newOffset = (offset + diff).clamp(0, newText.length);
+
+    controller.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: newOffset),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -438,30 +479,41 @@ class _QuickFormatBar extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _formatBtn('B', 'Bold', () => _insertMarkdown('**', '**'), isBold: true),
-          _formatBtn('I', 'Italic', () => _insertMarkdown('*', '*'), isItalic: true),
-          _formatBtn('H1', 'Heading 1', () => _insertMarkdown('# ', '')),
-          _formatBtn('`', 'Code', () => _insertMarkdown('`', '`'), isCode: true),
-          _formatBtn('•', 'List', () => _insertMarkdown('- ', '')),
+          _formatBtn('H1', 'Heading 1', () => _toggleLinePrefix('# ')),
+          _formatBtn('H2', 'Heading 2', () => _toggleLinePrefix('## ')),
+          _formatBtn('H3', 'Heading 3', () => _toggleLinePrefix('### ')),
+          _formatBtn('B', 'Bold', () => _insertInline('**', '**'), isBold: true),
+          _formatBtn('I', 'Italic', () => _insertInline('*', '*'), isItalic: true),
+          _formatBtn('•', 'Bullet List', () => _toggleLinePrefix('- ')),
+          _formatBtn('1.', 'Numbered List', () => _toggleLinePrefix('1. ')),
+          _formatBtn('☐', 'Task Checkbox', () => _toggleLinePrefix('- [ ] ')),
+          _formatBtn('`', 'Code', () => _insertInline('`', '`'), isCode: true),
         ],
       ),
     );
   }
 
-  Widget _formatBtn(String label, String tooltip, VoidCallback onTap, {bool isBold = false, bool isItalic = false, bool isCode = false}) {
+  Widget _formatBtn(
+    String label,
+    String tooltip,
+    VoidCallback onTap, {
+    bool isBold = false,
+    bool isItalic = false,
+    bool isCode = false,
+  }) {
     return Tooltip(
       message: tooltip,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppTheme.radius - 1),
         child: Container(
-          width: 26,
+          padding: const EdgeInsets.symmetric(horizontal: 5),
           height: 26,
           alignment: Alignment.center,
           child: Text(
             label,
             style: TextStyle(
-              fontSize: 11.5,
+              fontSize: 11,
               fontWeight: isBold ? FontWeight.w800 : FontWeight.w600,
               fontStyle: isItalic ? FontStyle.italic : FontStyle.normal,
               fontFamily: isCode ? 'monospace' : null,
