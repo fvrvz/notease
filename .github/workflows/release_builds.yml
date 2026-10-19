@@ -15,6 +15,12 @@ on:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: 'pages'
+  cancel-in-progress: false
 
 jobs:
   build-android:
@@ -129,13 +135,16 @@ jobs:
       - name: Install Linux Build Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libsecret-1-dev libjsoncpp-dev
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
           cache: true
+
+      - name: Enable Linux Desktop
+        run: flutter config --enable-linux-desktop
 
       - name: Install Dependencies
         run: flutter pub get
@@ -155,8 +164,8 @@ jobs:
           echo "Uploading NoteEase-Linux-x64.tar.gz to release $TAG_NAME..."
           gh release upload "$TAG_NAME" NoteEase-Linux-x64.tar.gz --clobber
 
-  build-web:
-    name: Build Web Bundle
+  build-and-deploy-web:
+    name: Build & Deploy Web App
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -172,16 +181,36 @@ jobs:
         run: flutter pub get
 
       - name: Build Web Application
-        run: flutter build web --release
+        run: flutter build web --release --base-href "/notease/"
 
       - name: Package Web Bundle into Zip
         run: |
           cd build/web && zip -r ../../NoteEase-Web.zip .
 
-      - name: Upload to Release
+      - name: Upload Web Asset to Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG_NAME="${{ inputs.tag || github.event.release.tag_name || github.ref_name }}"
           echo "Uploading NoteEase-Web.zip to release $TAG_NAME..."
           gh release upload "$TAG_NAME" NoteEase-Web.zip --clobber
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload GitHub Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+  deploy-pages:
+    name: Deploy to GitHub Pages
+    needs: build-and-deploy-web
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
