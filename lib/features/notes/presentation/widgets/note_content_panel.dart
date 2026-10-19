@@ -94,6 +94,7 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    _contentController.updateTheme(isDark);
     final borderColor = isDark ? AppColors.darkBorderDefault : AppColors.lightBorderDefault;
     final canvasColor = isDark ? AppColors.darkCanvasDefault : AppColors.lightCanvasDefault;
     final headerBg = isDark ? AppColors.darkCanvasSubtle : AppColors.lightCanvasSubtle;
@@ -294,11 +295,12 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
                     child: TextField(
                       controller: _contentController,
                       onChanged: (_) => _onChanged(),
+                      inputFormatters: [SmartMarkdownTextInputFormatter()],
                       maxLines: null,
                       expands: true,
                       style: TextStyle(
-                        height: 1.6,
-                        fontSize: 14,
+                        height: 1.65,
+                        fontSize: 14.5,
                         color: isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault,
                       ),
                       decoration: InputDecoration(
@@ -307,11 +309,11 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
                         enabledBorder: InputBorder.none,
                         focusedBorder: InputBorder.none,
                         contentPadding: EdgeInsets.zero,
-                        hintText: 'Start writing markdown here (# Header, **bold**, *italic*, `code`, - list)...',
+                        hintText: 'Start writing markdown (# Heading, - Bullet, 1. List, - [ ] Task)...',
                         hintStyle: TextStyle(
                           color: isDark ? AppColors.darkFgSubtle : AppColors.lightFgSubtle,
-                          fontSize: 14,
-                          height: 1.6,
+                          fontSize: 14.5,
+                          height: 1.65,
                         ),
                       ),
                       textAlignVertical: TextAlignVertical.top,
@@ -408,7 +410,7 @@ class _QuickFormatBar extends StatelessWidget {
   final bool isDark;
   final Color borderColor;
 
-  void _insertMarkdown(String prefix, String suffix) {
+  void _insertInline(String prefix, String suffix) {
     final text = controller.text;
     final selection = controller.selection;
     if (!selection.isValid) {
@@ -426,6 +428,44 @@ class _QuickFormatBar extends StatelessWidget {
     );
   }
 
+  void _toggleLinePrefix(String prefix) {
+    final text = controller.text;
+    final selection = controller.selection;
+    final offset = selection.isValid ? selection.baseOffset : text.length;
+
+    int lineStart = offset - 1;
+    while (lineStart >= 0 && lineStart < text.length && text[lineStart] != '\n') {
+      lineStart--;
+    }
+    lineStart++; // Start of the line
+
+    int lineEnd = offset;
+    while (lineEnd < text.length && text[lineEnd] != '\n') {
+      lineEnd++;
+    }
+
+    final currentLine = (lineStart <= lineEnd && lineEnd <= text.length)
+        ? text.substring(lineStart, lineEnd)
+        : '';
+
+    // Strip any existing heading or list prefix
+    final cleanLine = currentLine.replaceFirst(
+      RegExp(r'^(#{1,6}\s+|[-*•+]\s+|\d+\.\s+|-\s*\[[ xX]?\]\s+|>\s*)'),
+      '',
+    );
+
+    final newLine = currentLine.startsWith(prefix) ? cleanLine : '$prefix$cleanLine';
+    final newText = text.replaceRange(lineStart, lineEnd, newLine);
+
+    final diff = newLine.length - currentLine.length;
+    final newOffset = (offset + diff).clamp(0, newText.length);
+
+    controller.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: newOffset),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -438,30 +478,41 @@ class _QuickFormatBar extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _formatBtn('B', 'Bold', () => _insertMarkdown('**', '**'), isBold: true),
-          _formatBtn('I', 'Italic', () => _insertMarkdown('*', '*'), isItalic: true),
-          _formatBtn('H1', 'Heading 1', () => _insertMarkdown('# ', '')),
-          _formatBtn('`', 'Code', () => _insertMarkdown('`', '`'), isCode: true),
-          _formatBtn('•', 'List', () => _insertMarkdown('- ', '')),
+          _formatBtn('H1', 'Heading 1', () => _toggleLinePrefix('# ')),
+          _formatBtn('H2', 'Heading 2', () => _toggleLinePrefix('## ')),
+          _formatBtn('H3', 'Heading 3', () => _toggleLinePrefix('### ')),
+          _formatBtn('B', 'Bold', () => _insertInline('**', '**'), isBold: true),
+          _formatBtn('I', 'Italic', () => _insertInline('*', '*'), isItalic: true),
+          _formatBtn('•', 'Bullet List', () => _toggleLinePrefix('- ')),
+          _formatBtn('1.', 'Numbered List', () => _toggleLinePrefix('1. ')),
+          _formatBtn('☐', 'Task Checkbox', () => _toggleLinePrefix('- [ ] ')),
+          _formatBtn('`', 'Code', () => _insertInline('`', '`'), isCode: true),
         ],
       ),
     );
   }
 
-  Widget _formatBtn(String label, String tooltip, VoidCallback onTap, {bool isBold = false, bool isItalic = false, bool isCode = false}) {
+  Widget _formatBtn(
+    String label,
+    String tooltip,
+    VoidCallback onTap, {
+    bool isBold = false,
+    bool isItalic = false,
+    bool isCode = false,
+  }) {
     return Tooltip(
       message: tooltip,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppTheme.radius - 1),
         child: Container(
-          width: 26,
+          padding: const EdgeInsets.symmetric(horizontal: 5),
           height: 26,
           alignment: Alignment.center,
           child: Text(
             label,
             style: TextStyle(
-              fontSize: 11.5,
+              fontSize: 11,
               fontWeight: isBold ? FontWeight.w800 : FontWeight.w600,
               fontStyle: isItalic ? FontStyle.italic : FontStyle.normal,
               fontFamily: isCode ? 'monospace' : null,
