@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:notease/core/theme/app_theme.dart';
 import 'package:notease/data/repositories/note_repository.dart';
 import 'package:notease/domain/models/note.dart';
 import 'package:notease/features/notes/providers/notes_provider.dart';
+import 'package:notease/features/notes/presentation/widgets/markdown_controller.dart';
 import 'dart:async';
-
-enum EditorMode { edit, split, preview }
 
 class NoteContentPanel extends ConsumerStatefulWidget {
   const NoteContentPanel({super.key, required this.noteId});
@@ -19,16 +17,15 @@ class NoteContentPanel extends ConsumerStatefulWidget {
 
 class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
   late TextEditingController _titleController;
-  late TextEditingController _contentController;
+  late MarkdownSyntaxTextEditingController _contentController;
   Timer? _debounce;
   Note? _currentNote;
-  EditorMode _editorMode = EditorMode.edit;
 
   @override
   void initState() {
     super.initState();
     _titleController = TextEditingController();
-    _contentController = TextEditingController();
+    _contentController = MarkdownSyntaxTextEditingController(isDark: true);
     _loadNote();
   }
 
@@ -59,9 +56,8 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
   }
 
   void _onChanged() {
-    setState(() {}); // Immediate update for real-time markdown preview
     _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 350), () {
+    _debounce = Timer(const Duration(milliseconds: 300), () {
       if (_currentNote != null) {
         ref.read(notesNotifierProvider.notifier).updateNote(
           _currentNote!.copyWith(
@@ -111,7 +107,7 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Top Header Bar
+          // Header Bar
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
@@ -125,7 +121,7 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
             ),
             child: Row(
               children: [
-                // Color Label Dot
+                // Note Color Dot
                 Container(
                   width: 8,
                   height: 8,
@@ -135,13 +131,13 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
                   ),
                 ),
                 const SizedBox(width: 10),
-                // Note Title Field
+                // Title Field
                 Expanded(
                   child: TextField(
                     controller: _titleController,
                     onChanged: (_) => _onChanged(),
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: 15,
                       fontWeight: FontWeight.w600,
                       color: isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault,
                     ),
@@ -155,15 +151,15 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
                       hintText: 'Note title...',
                       hintStyle: TextStyle(
                         color: isDark ? AppColors.darkFgSubtle : AppColors.lightFgSubtle,
-                        fontSize: 16,
+                        fontSize: 15,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
                 ),
                 const SizedBox(width: 10),
-                // Mode Toggle: Write / Split / Preview
-                _buildModeToggle(isDark, borderColor),
+                // Quick Markdown Formatting Buttons
+                _QuickFormatBar(controller: _contentController, isDark: isDark, borderColor: borderColor),
                 const SizedBox(width: 8),
                 _ColorPicker(
                   selected: _currentNote?.color ?? NoteColor.sage,
@@ -213,16 +209,74 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
             ),
           ),
 
-          // Real-time Editor and/or Markdown Preview Body
+          // Real-time WYSIWYG / Markdown Editor Area
           Expanded(
-            child: _buildBodyContent(isDark, borderColor),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: TextField(
+                controller: _contentController,
+                onChanged: (_) => _onChanged(),
+                maxLines: null,
+                expands: true,
+                style: TextStyle(
+                  height: 1.6,
+                  fontSize: 14,
+                  color: isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault,
+                ),
+                decoration: InputDecoration(
+                  filled: false,
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  contentPadding: EdgeInsets.zero,
+                  hintText: 'Start writing markdown here (# Header, **bold**, *italic*, `code`, - list)...',
+                  hintStyle: TextStyle(
+                    color: isDark ? AppColors.darkFgSubtle : AppColors.lightFgSubtle,
+                    fontSize: 14,
+                    height: 1.6,
+                  ),
+                ),
+                textAlignVertical: TextAlignVertical.top,
+              ),
+            ),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildModeToggle(bool isDark, Color borderColor) {
+class _QuickFormatBar extends StatelessWidget {
+  const _QuickFormatBar({
+    required this.controller,
+    required this.isDark,
+    required this.borderColor,
+  });
+
+  final TextEditingController controller;
+  final bool isDark;
+  final Color borderColor;
+
+  void _insertMarkdown(String prefix, String suffix) {
+    final text = controller.text;
+    final selection = controller.selection;
+    if (!selection.isValid) {
+      controller.text = '$text$prefix$suffix';
+      return;
+    }
+    final selectedText = selection.textInside(text);
+    final newText = text.replaceRange(selection.start, selection.end, '$prefix$selectedText$suffix');
+    controller.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection(
+        baseOffset: selection.start + prefix.length,
+        extentOffset: selection.start + prefix.length + selectedText.length,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       height: 28,
       decoration: BoxDecoration(
@@ -233,162 +287,38 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _modeButton('Edit', EditorMode.edit, isDark),
-          _modeButton('Split', EditorMode.split, isDark),
-          _modeButton('Preview', EditorMode.preview, isDark),
+          _formatBtn('B', 'Bold', () => _insertMarkdown('**', '**'), isBold: true),
+          _formatBtn('I', 'Italic', () => _insertMarkdown('*', '*'), isItalic: true),
+          _formatBtn('H1', 'Heading 1', () => _insertMarkdown('# ', '')),
+          _formatBtn('`', 'Code', () => _insertMarkdown('`', '`'), isCode: true),
+          _formatBtn('•', 'List', () => _insertMarkdown('- ', '')),
         ],
       ),
     );
   }
 
-  Widget _modeButton(String text, EditorMode mode, bool isDark) {
-    final isSelected = _editorMode == mode;
-    final fg = isSelected
-        ? (isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault)
-        : (isDark ? AppColors.darkFgMuted : AppColors.lightFgMuted);
-    final bg = isSelected
-        ? (isDark ? AppColors.darkCanvasSubtle : AppColors.lightCanvasDefault)
-        : Colors.transparent;
-
-    return GestureDetector(
-      onTap: () => setState(() => _editorMode = mode),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(AppTheme.radius - 1),
-        ),
-        child: Text(
-          text,
-          style: TextStyle(
-            fontSize: 11.5,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-            color: fg,
+  Widget _formatBtn(String label, String tooltip, VoidCallback onTap, {bool isBold = false, bool isItalic = false, bool isCode = false}) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppTheme.radius - 1),
+        child: Container(
+          width: 26,
+          height: 26,
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 11.5,
+              fontWeight: isBold ? FontWeight.w800 : FontWeight.w600,
+              fontStyle: isItalic ? FontStyle.italic : FontStyle.normal,
+              fontFamily: isCode ? 'monospace' : null,
+              color: isDark ? AppColors.darkFgMuted : AppColors.lightFgMuted,
+            ),
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildBodyContent(bool isDark, Color borderColor) {
-    final isCompact = MediaQuery.of(context).size.width < 900;
-
-    if (_editorMode == EditorMode.preview) {
-      return _buildMarkdownPreview(isDark);
-    }
-
-    if (_editorMode == EditorMode.split && !isCompact) {
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(child: _buildRawEditor(isDark)),
-          VerticalDivider(width: 1, thickness: 1, color: borderColor),
-          Expanded(child: _buildMarkdownPreview(isDark)),
-        ],
-      );
-    }
-
-    // Default: Full raw editor
-    return _buildRawEditor(isDark);
-  }
-
-  Widget _buildRawEditor(bool isDark) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: TextField(
-        controller: _contentController,
-        onChanged: (_) => _onChanged(),
-        maxLines: null,
-        expands: true,
-        style: TextStyle(
-          height: 1.6,
-          fontSize: 13.5,
-          fontFamily: 'monospace',
-          color: isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault,
-        ),
-        decoration: InputDecoration(
-          filled: false,
-          border: InputBorder.none,
-          enabledBorder: InputBorder.none,
-          focusedBorder: InputBorder.none,
-          contentPadding: EdgeInsets.zero,
-          hintText: '# Title\n\nWrite markdown here...\n- [ ] Task 1\n- [x] Task 2',
-          hintStyle: TextStyle(
-            color: isDark ? AppColors.darkFgSubtle : AppColors.lightFgSubtle,
-            fontFamily: 'monospace',
-            fontSize: 13.5,
-            height: 1.6,
-          ),
-        ),
-        textAlignVertical: TextAlignVertical.top,
-      ),
-    );
-  }
-
-  Widget _buildMarkdownPreview(bool isDark) {
-    final text = _contentController.text.trim();
-    if (text.isEmpty) {
-      return Center(
-        child: Text(
-          'Nothing to preview yet.',
-          style: TextStyle(
-            fontSize: 13,
-            color: isDark ? AppColors.darkFgSubtle : AppColors.lightFgSubtle,
-          ),
-        ),
-      );
-    }
-
-    final mdStyleSheet = MarkdownStyleSheet(
-      p: TextStyle(
-        fontSize: 13.5,
-        height: 1.5,
-        color: isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault,
-      ),
-      h1: TextStyle(
-        fontSize: 20,
-        fontWeight: FontWeight.w700,
-        color: isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault,
-      ),
-      h2: TextStyle(
-        fontSize: 17,
-        fontWeight: FontWeight.w600,
-        color: isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault,
-      ),
-      h3: TextStyle(
-        fontSize: 15,
-        fontWeight: FontWeight.w600,
-        color: isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault,
-      ),
-      code: TextStyle(
-        fontSize: 12.5,
-        fontFamily: 'monospace',
-        backgroundColor: isDark ? AppColors.darkCanvasInset : AppColors.lightCanvasInset,
-        color: isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault,
-      ),
-      codeblockDecoration: BoxDecoration(
-        color: isDark ? AppColors.darkCanvasInset : AppColors.lightCanvasInset,
-        borderRadius: BorderRadius.circular(AppTheme.radius),
-        border: Border.all(
-          color: isDark ? AppColors.darkBorderDefault : AppColors.lightBorderDefault,
-        ),
-      ),
-      blockquoteDecoration: BoxDecoration(
-        border: Border(
-          left: BorderSide(
-            color: isDark ? AppColors.darkBorderDefault : AppColors.lightBorderDefault,
-            width: 3,
-          ),
-        ),
-      ),
-    );
-
-    return Markdown(
-      data: _contentController.text,
-      styleSheet: mdStyleSheet,
-      padding: const EdgeInsets.all(16),
-      selectable: true,
     );
   }
 }

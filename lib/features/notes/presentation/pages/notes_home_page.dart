@@ -53,7 +53,7 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage> {
                 if (isMobile) {
                   return _buildMobileResponsiveLayout(notes, selectedId, isDark, borderColor);
                 }
-                return _buildDesktopLayout(notes, selectedId, isDark, borderColor, screenWidth);
+                return _buildDesktopLayout(notes, selectedId, isDark, borderColor);
               },
             ),
           ),
@@ -87,7 +87,6 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage> {
       ),
       child: Row(
         children: [
-          // If on mobile and a note is selected, show back button to notes list
           if (isMobile && selectedId != null) ...[
             IconButton(
               icon: Icon(Icons.arrow_back_rounded, size: 20, color: fgDefault),
@@ -97,8 +96,6 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage> {
             ),
             const SizedBox(width: 12),
           ],
-
-          // Search Field
           Expanded(
             child: Container(
               height: 32,
@@ -134,10 +131,7 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage> {
               ),
             ),
           ),
-
           const SizedBox(width: 12),
-
-          // New Note Button (Flat, no shadows)
           Material(
             color: accent,
             borderRadius: BorderRadius.circular(AppTheme.radius),
@@ -146,9 +140,6 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage> {
               borderRadius: BorderRadius.circular(AppTheme.radius),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(AppTheme.radius),
-                ),
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -177,7 +168,6 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage> {
     String? selectedId,
     bool isDark,
     Color borderColor,
-    double screenWidth,
   ) {
     final selectedIndex = notes.indexWhere((n) => n.id == selectedId);
     final leftNotes = selectedIndex > 0 ? notes.sublist(0, selectedIndex) : <Note>[];
@@ -188,7 +178,7 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Sidebar (fixed or toggled width)
+        // Sidebar (fixed width)
         AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           curve: Curves.easeOutCubic,
@@ -209,23 +199,39 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage> {
             },
           ),
 
-        // Active Note Panel with min/max width constraints
+        // Left-aligned Active Note Panel with smooth AnimatedSize & AnimatedSwitcher
         Expanded(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(
-                minWidth: 380,
-                maxWidth: 960,
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(10),
-                child: selectedId != null && notes.any((n) => n.id == selectedId)
-                    ? NoteContentPanel(
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 220),
+              reverseDuration: const Duration(milliseconds: 160),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              transitionBuilder: (child, animation) {
+                return FadeTransition(
+                  opacity: animation,
+                  child: SizeTransition(
+                    sizeFactor: animation,
+                    axis: Axis.horizontal,
+                    alignment: Alignment.centerLeft, // expands smoothly from left
+                    child: child,
+                  ),
+                );
+              },
+              child: selectedId != null && notes.any((n) => n.id == selectedId)
+                  ? Padding(
+                      key: ValueKey(selectedId),
+                      padding: const EdgeInsets.all(8),
+                      child: NoteContentPanel(
                         noteId: selectedId,
-                        key: ValueKey(selectedId),
-                      )
-                    : const EmptyState(),
-              ),
+                      ),
+                    )
+                  : const Padding(
+                      key: ValueKey('empty_state'),
+                      padding: EdgeInsets.all(16),
+                      child: EmptyState(),
+                    ),
             ),
           ),
         ),
@@ -249,7 +255,6 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage> {
     bool isDark,
     Color borderColor,
   ) {
-    // If a note is tapped on mobile, fill view with the full active editor
     if (selectedId != null && notes.any((n) => n.id == selectedId)) {
       return Padding(
         padding: const EdgeInsets.all(8),
@@ -257,7 +262,6 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage> {
       );
     }
 
-    // Otherwise, shift vertically to full responsive scrollable note cards list
     if (notes.isEmpty) {
       return const EmptyState();
     }
