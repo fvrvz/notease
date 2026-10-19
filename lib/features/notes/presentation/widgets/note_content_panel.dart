@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -10,8 +11,14 @@ import 'package:notease/features/notes/presentation/widgets/markdown_controller.
 import 'dart:async';
 
 class NoteContentPanel extends ConsumerStatefulWidget {
-  const NoteContentPanel({super.key, required this.noteId});
+  const NoteContentPanel({
+    super.key,
+    required this.noteId,
+    this.onCollapse,
+  });
+
   final String noteId;
+  final VoidCallback? onCollapse;
 
   @override
   ConsumerState<NoteContentPanel> createState() => _NoteContentPanelState();
@@ -102,41 +109,81 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
         ? _getNoteColor(_currentNote!.color)
         : (isDark ? AppColors.accent : AppColors.accentLight);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: canvasColor,
-        borderRadius: BorderRadius.circular(AppTheme.radius),
-        border: Border.all(color: borderColor, width: 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Header Bar
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: headerBg,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(AppTheme.radius),
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.escape): () {
+          if (widget.onCollapse != null) {
+            widget.onCollapse!();
+          } else {
+            ref.read(selectedNoteIdProvider.notifier).state = null;
+          }
+        },
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: canvasColor,
+          borderRadius: BorderRadius.circular(AppTheme.radius),
+          border: Border.all(color: borderColor, width: 1),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Header Bar
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: headerBg,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(AppTheme.radius),
+                ),
+                border: Border(
+                  bottom: BorderSide(color: borderColor, width: 1),
+                ),
               ),
-              border: Border(
-                bottom: BorderSide(color: borderColor, width: 1),
-              ),
-            ),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final showFormatting = constraints.maxWidth >= 540;
-                return Row(
-                  children: [
-                    // Note Color Dot
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: noteColor,
-                        shape: BoxShape.circle,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final showFormatting = constraints.maxWidth >= 540;
+                  return Row(
+                    children: [
+                      // Collapse / Toggle Note Button
+                      Tooltip(
+                        message: 'Collapse note (Esc)',
+                        child: InkWell(
+                          onTap: () {
+                            if (widget.onCollapse != null) {
+                              widget.onCollapse!();
+                            } else {
+                              ref.read(selectedNoteIdProvider.notifier).state = null;
+                            }
+                          },
+                          borderRadius: BorderRadius.circular(AppTheme.radius),
+                          child: Container(
+                            width: 26,
+                            height: 26,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: isDark ? AppColors.darkCanvasInset : AppColors.lightCanvasInset,
+                              borderRadius: BorderRadius.circular(AppTheme.radius),
+                              border: Border.all(color: borderColor, width: 1),
+                            ),
+                            child: Icon(
+                              Icons.chevron_left_rounded,
+                              size: 18,
+                              color: isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 8),
+                      // Note Color Dot
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: noteColor,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
                     const SizedBox(width: 10),
                     // Title Field
                     Expanded(
@@ -393,7 +440,8 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
                 },
               ),
             ),
-        ],
+          ],
+        ),
       ),
     );
   }
