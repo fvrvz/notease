@@ -252,6 +252,11 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage>
         ? notes.sublist(selectedIndex + 1)
         : <Note>[];
 
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final navWidth = _navExpanded ? 200.0 : 52.0;
+    // Comfortable reading width for the opened note
+    final noteWidth = (screenWidth - navWidth - 100.0).clamp(440.0, 720.0);
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -259,83 +264,91 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage>
         AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeInOutCubic,
-          width: _navExpanded ? 200 : 52,
+          width: navWidth,
           child: NavSidebar(
             isExpanded: _navExpanded,
             onToggle: () => setState(() => _navExpanded = !_navExpanded),
           ),
         ),
 
-        // Left accordion strips (horizontally scrollable if many notes)
-        if (leftNotes.isNotEmpty)
-          NoteAccordionStrip(
-            notes: leftNotes,
-            isLeft: true,
-            selectedId: selectedId,
-            onNoteSelected: _toggleNoteSelection,
-          ),
-
-        // Active Note Panel with smooth ease-in-out expand/collapse animation OR Empty State
+        // Main notes row: All notes aligned to the LEFT, flush without gaps: |C||C||Opened||C||C|
         Expanded(
-          child: AnimatedBuilder(
-            animation: _toggleAnimation,
-            builder: (context, _) {
-              final activeId = selectedId ?? _activeNoteId;
-              final showActiveNote = activeId != null &&
-                  notes.any((n) => n.id == activeId) &&
-                  (_toggleAnimation.value > 0.0 || selectedId != null);
-
-              if (!showActiveNote) {
-                // When completely collapsed, show Empty State
-                return Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: EmptyState(
-                    title: searchQuery.isNotEmpty ? 'No matching notes' : null,
-                    message: searchQuery.isNotEmpty
-                        ? 'No notes matched "$searchQuery". Try searching by title, content, date, color, or tags.'
-                        : 'Click any note strip to expand it, or click + to create a new note.',
-                    icon: searchQuery.isNotEmpty ? Icons.search_off_rounded : null,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Left collapsed note strips: |C||C|
+                if (leftNotes.isNotEmpty)
+                  NoteAccordionStrip(
+                    notes: leftNotes,
+                    isLeft: true,
+                    selectedId: selectedId,
+                    onNoteSelected: _toggleNoteSelection,
                   ),
-                );
-              }
 
-              // Smooth horizontal expansion & collapse using widthFactor
-              return Align(
-                alignment: Alignment.centerLeft,
-                child: ClipRect(
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    widthFactor: _toggleAnimation.value,
-                    child: FadeTransition(
-                      opacity: _toggleAnimation,
-                      child: Container(
-                        constraints: const BoxConstraints(
-                          minWidth: 320,
-                          maxWidth: 860,
-                        ),
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-                        child: NoteContentPanel(
-                          key: ValueKey(activeId),
-                          noteId: activeId,
-                          onCollapse: () => _toggleNoteSelection(activeId),
+                // Active Opened Note: ||Opened|| (immediately adjacent to left strips)
+                AnimatedBuilder(
+                  animation: _toggleAnimation,
+                  builder: (context, _) {
+                    final activeId = selectedId ?? _activeNoteId;
+                    final showActiveNote = activeId != null &&
+                        notes.any((n) => n.id == activeId) &&
+                        (_toggleAnimation.value > 0.0 || selectedId != null);
+
+                    if (!showActiveNote) {
+                      return const SizedBox.shrink();
+                    }
+
+                    return ClipRect(
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        widthFactor: _toggleAnimation.value,
+                        child: FadeTransition(
+                          opacity: _toggleAnimation,
+                          child: Container(
+                            width: noteWidth,
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                            child: NoteContentPanel(
+                              key: ValueKey(activeId),
+                              noteId: activeId,
+                              onCollapse: () => _toggleNoteSelection(activeId),
+                            ),
+                          ),
                         ),
                       ),
+                    );
+                  },
+                ),
+
+                // Right collapsed note strips immediately after opened note: ||C||C|
+                if (rightNotes.isNotEmpty)
+                  NoteAccordionStrip(
+                    notes: rightNotes,
+                    isLeft: false,
+                    selectedId: selectedId,
+                    onNoteSelected: _toggleNoteSelection,
+                  ),
+
+                // Empty state if no notes match
+                if (notes.isEmpty)
+                  Container(
+                    width: 320,
+                    padding: const EdgeInsets.all(16),
+                    child: EmptyState(
+                      title: searchQuery.isNotEmpty ? 'No matching notes' : null,
+                      message: searchQuery.isNotEmpty
+                          ? 'No notes matched "$searchQuery".'
+                          : null,
+                      icon: searchQuery.isNotEmpty ? Icons.search_off_rounded : null,
                     ),
                   ),
-                ),
-              );
-            },
+              ],
+            ),
           ),
         ),
-
-        // Right accordion strips (horizontally scrollable if many notes)
-        if (rightNotes.isNotEmpty)
-          NoteAccordionStrip(
-            notes: rightNotes,
-            isLeft: false,
-            selectedId: selectedId,
-            onNoteSelected: _toggleNoteSelection,
-          ),
       ],
     );
   }

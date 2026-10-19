@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:notease/core/theme/app_theme.dart';
 import 'package:notease/domain/models/note.dart';
@@ -19,34 +18,23 @@ class NoteAccordionStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Show up to 4 note strips (160px) before scrolling horizontally
-    final stripWidth = math.min(notes.length * 40.0, 160.0);
-
-    return ConstrainedBox(
-      constraints: BoxConstraints(
-        maxWidth: stripWidth,
-      ),
-      child: SizedBox(
-        height: double.infinity,
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          physics: const BouncingScrollPhysics(),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: notes
-                .asMap()
-                .entries
-                .map((entry) => _NoteStrip(
-                      note: entry.value,
-                      index: entry.key,
-                      isLeft: isLeft,
-                      isSelected: entry.value.id == selectedId,
-                      onTap: () => onNoteSelected(entry.value.id),
-                    ))
-                .toList(),
-          ),
-        ),
+    return SizedBox(
+      width: notes.length * 40.0,
+      height: double.infinity,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: notes
+            .asMap()
+            .entries
+            .map((entry) => _NoteStrip(
+                  note: entry.value,
+                  index: entry.key,
+                  isLeft: isLeft,
+                  isSelected: entry.value.id == selectedId,
+                  onTap: () => onNoteSelected(entry.value.id),
+                ))
+            .toList(),
       ),
     );
   }
