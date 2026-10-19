@@ -11,137 +11,315 @@ class SettingsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeProvider);
     final isDark = themeMode == ThemeMode.dark;
+    final borderColor = isDark ? GitHubColors.darkBorderDefault : GitHubColors.lightBorderDefault;
+    final canvasColor = isDark ? GitHubColors.darkCanvasDefault : GitHubColors.lightCanvasSubtle;
+    final surfaceColor = isDark ? GitHubColors.darkCanvasSubtle : GitHubColors.lightCanvasDefault;
+    final fgDefault = isDark ? GitHubColors.darkFgDefault : GitHubColors.lightFgDefault;
+    final fgMuted = isDark ? GitHubColors.darkFgMuted : GitHubColors.lightFgMuted;
 
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.background,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 20, 16, 0),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back_rounded),
-                    onPressed: () => context.pop(),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Settings',
-                    style: Theme.of(context).textTheme.headlineMedium,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                children: [
-                  _SectionHeader(label: 'Appearance'),
-                  _SettingsTile(
-                    icon: isDark
-                        ? Icons.dark_mode_rounded
-                        : Icons.light_mode_rounded,
-                    title: 'Dark Mode',
-                    subtitle: isDark ? 'Currently dark' : 'Currently light',
-                    trailing: Switch(
-                      value: isDark,
-                      onChanged: (_) =>
-                          ref.read(themeModeProvider.notifier).toggle(),
-                      activeColor: AppColors.accent,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  _SectionHeader(label: 'Sync'),
-                  _SettingsTile(
-                    icon: Icons.cloud_off_outlined,
-                    title: 'Sync Provider',
-                    subtitle: 'Not connected',
-                    trailing: const Icon(Icons.chevron_right_rounded),
-                    onTap: () {},
-                  ),
-                  const SizedBox(height: 16),
-                  _SectionHeader(label: 'About'),
-                  _SettingsTile(
-                    icon: Icons.info_outline_rounded,
-                    title: 'NoteEase',
-                    subtitle: 'Version 1.0.0',
-                    trailing: const SizedBox.shrink(),
-                  ),
-                ],
-              ),
-            ),
-          ],
+      backgroundColor: canvasColor,
+      appBar: AppBar(
+        backgroundColor: surfaceColor,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_rounded, size: 18, color: fgMuted),
+          onPressed: () => context.pop(),
         ),
-      ),
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.label});
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 0, 0, 8),
-      child: Text(
-        label.toUpperCase(),
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          letterSpacing: 1.2,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-}
-
-class _SettingsTile extends StatelessWidget {
-  const _SettingsTile({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.trailing,
-    this.onTap,
-  });
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final Widget trailing;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: Theme.of(context).dividerColor,
-          width: 0.5,
-        ),
-      ),
-      child: ListTile(
-        onTap: onTap,
-        leading: Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: AppColors.accent.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(10),
+        title: Text(
+          'Settings',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: fgDefault,
           ),
-          child: Icon(icon, size: 18, color: AppColors.accent),
         ),
-        title: Text(title, style: Theme.of(context).textTheme.titleSmall),
-        subtitle: Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
-        trailing: trailing,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Divider(height: 1, color: borderColor),
+        ),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          // GitHub Repository Settings Section Box
+          _GitHubSection(
+            title: 'Appearance',
+            description: 'Choose your default theme interface mode.',
+            borderColor: borderColor,
+            surfaceColor: surfaceColor,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Theme preference',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: fgDefault,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          isDark ? 'GitHub Dark mode active' : 'GitHub Light mode active',
+                          style: TextStyle(fontSize: 12, color: fgMuted),
+                        ),
+                      ],
+                    ),
+                    _GitHubThemeToggle(
+                      isDark: isDark,
+                      onToggle: () => ref.read(themeModeProvider.notifier).toggle(),
+                      borderColor: borderColor,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 20),
+
+          _GitHubSection(
+            title: 'Storage & Sync',
+            description: 'Local guest storage is currently active. Connect a cloud provider to sync.',
+            borderColor: borderColor,
+            surfaceColor: surfaceColor,
+            children: [
+              _SyncProviderRow(
+                name: 'Google Drive',
+                desc: 'Sync notes JSON to your personal Google Drive app data.',
+                isDark: isDark,
+                borderColor: borderColor,
+              ),
+              Divider(height: 1, color: borderColor),
+              _SyncProviderRow(
+                name: 'iCloud (Apple)',
+                desc: 'Seamless sync across macOS and iOS devices.',
+                isDark: isDark,
+                borderColor: borderColor,
+              ),
+              Divider(height: 1, color: borderColor),
+              _SyncProviderRow(
+                name: 'Microsoft OneDrive',
+                desc: 'Store notes inside your personal or work OneDrive.',
+                isDark: isDark,
+                borderColor: borderColor,
+              ),
+              Divider(height: 1, color: borderColor),
+              _SyncProviderRow(
+                name: 'Dropbox',
+                desc: 'Direct file synchronization to Dropbox/Apps/NoteEase.',
+                isDark: isDark,
+                borderColor: borderColor,
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 20),
+
+          _GitHubSection(
+            title: 'About NoteEase',
+            description: 'Cross-platform notes client inspired by GitHub Primer UI.',
+            borderColor: borderColor,
+            surfaceColor: surfaceColor,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Version', style: TextStyle(fontSize: 13, color: fgDefault)),
+                    Text('v1.0.0 (Primer)', style: TextStyle(fontSize: 13, fontFamily: 'monospace', color: fgMuted)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GitHubSection extends StatelessWidget {
+  const _GitHubSection({
+    required this.title,
+    required this.description,
+    required this.borderColor,
+    required this.surfaceColor,
+    required this.children,
+  });
+
+  final String title;
+  final String description;
+  final Color borderColor;
+  final Color surfaceColor;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final fgDefault = isDark ? GitHubColors.darkFgDefault : GitHubColors.lightFgDefault;
+    final fgMuted = isDark ? GitHubColors.darkFgMuted : GitHubColors.lightFgMuted;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: fgDefault,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          description,
+          style: TextStyle(
+            fontSize: 12,
+            color: fgMuted,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Container(
+          decoration: BoxDecoration(
+            color: surfaceColor,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: borderColor, width: 1),
+          ),
+          child: Column(children: children),
+        ),
+      ],
+    );
+  }
+}
+
+class _GitHubThemeToggle extends StatelessWidget {
+  const _GitHubThemeToggle({
+    required this.isDark,
+    required this.onToggle,
+    required this.borderColor,
+  });
+
+  final bool isDark;
+  final VoidCallback onToggle;
+  final Color borderColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: isDark ? GitHubColors.darkCanvasInset : GitHubColors.lightCanvasInset,
+      borderRadius: BorderRadius.circular(6),
+      child: InkWell(
+        onTap: onToggle,
+        borderRadius: BorderRadius.circular(6),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: borderColor),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+                size: 14,
+                color: isDark ? GitHubColors.darkFgDefault : GitHubColors.lightFgDefault,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                isDark ? 'Dark' : 'Light',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? GitHubColors.darkFgDefault : GitHubColors.lightFgDefault,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SyncProviderRow extends StatelessWidget {
+  const _SyncProviderRow({
+    required this.name,
+    required this.desc,
+    required this.isDark,
+    required this.borderColor,
+  });
+
+  final String name;
+  final String desc;
+  final bool isDark;
+  final Color borderColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final fgDefault = isDark ? GitHubColors.darkFgDefault : GitHubColors.lightFgDefault;
+    final fgMuted = isDark ? GitHubColors.darkFgMuted : GitHubColors.lightFgMuted;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: fgDefault,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  desc,
+                  style: TextStyle(fontSize: 12, color: fgMuted),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          // GitHub style outline secondary button
+          Material(
+            color: isDark ? GitHubColors.darkCanvasInset : GitHubColors.lightCanvasInset,
+            borderRadius: BorderRadius.circular(6),
+            child: InkWell(
+              onTap: () {},
+              borderRadius: BorderRadius.circular(6),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: borderColor),
+                ),
+                child: Text(
+                  'Connect',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: isDark ? GitHubColors.darkAccentFg : GitHubColors.lightAccentFg,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -15,7 +15,7 @@ class NoteAccordionStrip extends StatelessWidget {
   final bool isLeft;
   final void Function(String id) onNoteSelected;
 
-  static const double _stripWidth = 40.0;
+  static const double _stripWidth = 36.0;
 
   @override
   Widget build(BuildContext context) {
@@ -33,8 +33,8 @@ class NoteAccordionStrip extends StatelessWidget {
                   isLeft: isLeft,
                   onTap: () => onNoteSelected(entry.value.id),
                 ).animate().fadeIn(
-                      delay: Duration(milliseconds: entry.key * 50),
-                      duration: 200.ms,
+                      delay: Duration(milliseconds: entry.key * 35),
+                      duration: 180.ms,
                     ))
             .toList(),
       ),
@@ -62,21 +62,52 @@ class _NoteStrip extends StatefulWidget {
 class _NoteStripState extends State<_NoteStrip> {
   bool _isHovered = false;
 
-  Color get _noteColor {
-    const map = {
-      NoteColor.sage: AppColors.noteSage,
-      NoteColor.lavender: AppColors.noteLavender,
-      NoteColor.peach: AppColors.notePeach,
-      NoteColor.sky: AppColors.noteSky,
-      NoteColor.butter: AppColors.noteButter,
-      NoteColor.mint: AppColors.noteMint,
-      NoteColor.rose: AppColors.noteRose,
-    };
-    return map[widget.note.color] ?? AppColors.noteSage;
+  Color _getBadgeColor(NoteColor color, bool isDark) {
+    if (isDark) {
+      switch (color) {
+        case NoteColor.sage:
+          return GitHubColors.darkNoteGreen;
+        case NoteColor.sky:
+          return GitHubColors.darkNoteBlue;
+        case NoteColor.lavender:
+          return GitHubColors.darkNotePurple;
+        case NoteColor.peach:
+          return GitHubColors.darkNoteOrange;
+        case NoteColor.butter:
+          return GitHubColors.darkNoteYellow;
+        case NoteColor.mint:
+          return GitHubColors.darkNoteTeal;
+        case NoteColor.rose:
+          return GitHubColors.darkNotePink;
+      }
+    } else {
+      switch (color) {
+        case NoteColor.sage:
+          return const Color(0xFF1A7F37);
+        case NoteColor.sky:
+          return const Color(0xFF0969DA);
+        case NoteColor.lavender:
+          return const Color(0xFF8250DF);
+        case NoteColor.peach:
+          return const Color(0xFFBC4C00);
+        case NoteColor.butter:
+          return const Color(0xFF9A6700);
+        case NoteColor.mint:
+          return const Color(0xFF1B7C83);
+        case NoteColor.rose:
+          return const Color(0xFFBF3989);
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final badgeColor = _getBadgeColor(widget.note.color, isDark);
+    final borderColor = isDark ? GitHubColors.darkBorderDefault : GitHubColors.lightBorderDefault;
+    final surfaceColor = isDark ? GitHubColors.darkCanvasSubtle : GitHubColors.lightCanvasDefault;
+    final textColor = isDark ? GitHubColors.darkFgDefault : GitHubColors.lightFgDefault;
+
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
@@ -84,44 +115,56 @@ class _NoteStripState extends State<_NoteStrip> {
       child: GestureDetector(
         onTap: widget.onTap,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeInOut,
-          width: _isHovered ? 52 : 40,
-          margin: const EdgeInsets.symmetric(vertical: 20, horizontal: 2),
+          duration: const Duration(milliseconds: 150),
+          curve: Curves.easeOutCubic,
+          width: _isHovered ? 46 : 34,
+          margin: const EdgeInsets.symmetric(vertical: 16, horizontal: 1),
           decoration: BoxDecoration(
-            color: _noteColor.withOpacity(_isHovered ? 0.95 : 0.8),
-            borderRadius: BorderRadius.circular(12),
+            color: _isHovered
+                ? (isDark ? GitHubColors.darkCanvasInset : GitHubColors.lightCanvasInset)
+                : surfaceColor,
+            borderRadius: BorderRadius.circular(6),
             border: Border.all(
-              color: _noteColor.withOpacity(0.5),
+              color: _isHovered ? badgeColor : borderColor,
               width: 1,
             ),
-            boxShadow: _isHovered
-                ? [
-                    BoxShadow(
-                      color: _noteColor.withOpacity(0.3),
-                      blurRadius: 12,
-                      spreadRadius: 0,
-                    )
-                  ]
-                : [],
           ),
-          child: Center(
-            child: RotatedBox(
-              quarterTurns: 3,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Text(
-                  widget.note.title.isEmpty ? 'Untitled' : widget.note.title,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: Colors.black.withOpacity(0.7),
-                    fontWeight: FontWeight.w600,
-                    fontSize: 11,
+          child: Column(
+            children: [
+              // Colored dot badge at top (like git commit/tag status)
+              Padding(
+                padding: const EdgeInsets.only(top: 10, bottom: 6),
+                child: Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: badgeColor,
+                    shape: BoxShape.circle,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-            ),
+              Expanded(
+                child: Center(
+                  child: RotatedBox(
+                    quarterTurns: 3,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Text(
+                        widget.note.title.isEmpty ? 'Untitled' : widget.note.title,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: _isHovered ? FontWeight.w600 : FontWeight.w500,
+                          color: _isHovered ? badgeColor : textColor,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+            ],
           ),
         ),
       ),

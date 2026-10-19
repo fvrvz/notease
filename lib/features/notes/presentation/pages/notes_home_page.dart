@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:notease/core/theme/app_theme.dart';
+import 'package:notease/domain/models/note.dart';
 import 'package:notease/features/notes/providers/notes_provider.dart';
 import 'package:notease/features/notes/presentation/widgets/note_accordion_strip.dart';
 import 'package:notease/features/notes/presentation/widgets/note_content_panel.dart';
@@ -17,7 +17,14 @@ class NotesHomePage extends ConsumerStatefulWidget {
 
 class _NotesHomePageState extends ConsumerState<NotesHomePage>
     with TickerProviderStateMixin {
-  bool _navExpanded = false;
+  bool _navExpanded = true;
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,40 +32,200 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage>
     final selectedId = ref.watch(selectedNoteIdProvider);
     final size = MediaQuery.sizeOf(context);
     final isMobile = size.width < 768;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final borderColor = isDark ? GitHubColors.darkBorderDefault : GitHubColors.lightBorderDefault;
+    final headerBg = isDark ? GitHubColors.darkCanvasSubtle : GitHubColors.lightCanvasDefault;
 
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.background,
-      body: notesAsync.when(
-        loading: () => const Center(
-          child: CircularProgressIndicator(color: AppColors.accent),
-        ),
-        error: (e, _) => Center(child: Text('Error: $e')),
-        data: (notes) {
-          if (isMobile) {
-            return _buildMobileLayout(notes, selectedId);
-          }
-          return _buildDesktopLayout(notes, selectedId);
-        },
+      backgroundColor: isDark ? GitHubColors.darkCanvasDefault : GitHubColors.lightCanvasSubtle,
+      body: Column(
+        children: [
+          // GitHub Global Navigation Bar
+          _buildGitHubTopNav(context, isDark, borderColor, headerBg),
+          // Main Body
+          Expanded(
+            child: notesAsync.when(
+              loading: () => Center(
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: isDark ? GitHubColors.darkAccentFg : GitHubColors.lightAccentFg,
+                ),
+              ),
+              error: (e, _) => Center(child: Text('Error: $e')),
+              data: (notes) {
+                if (isMobile) {
+                  return _buildMobileLayout(notes, selectedId, isDark, borderColor);
+                }
+                return _buildDesktopLayout(notes, selectedId, isDark, borderColor);
+              },
+            ),
+          ),
+        ],
       ),
-      floatingActionButton: _buildFab(context),
     );
   }
 
-  Widget _buildDesktopLayout(List<dynamic> notes, String? selectedId) {
-    // Find index of selected note
+  Widget _buildGitHubTopNav(
+    BuildContext context,
+    bool isDark,
+    Color borderColor,
+    Color headerBg,
+  ) {
+    final fgDefault = isDark ? GitHubColors.darkFgDefault : GitHubColors.lightFgDefault;
+    final fgMuted = isDark ? GitHubColors.darkFgMuted : GitHubColors.lightFgMuted;
+
+    return Container(
+      height: 48 + MediaQuery.of(context).padding.top,
+      padding: EdgeInsets.only(
+        top: MediaQuery.of(context).padding.top,
+        left: 16,
+        right: 16,
+      ),
+      decoration: BoxDecoration(
+        color: headerBg,
+        border: Border(bottom: BorderSide(color: borderColor, width: 1)),
+      ),
+      child: Row(
+        children: [
+          // GitHub Octocat-like Icon
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: isDark ? GitHubColors.darkCanvasInset : GitHubColors.lightCanvasInset,
+              shape: BoxShape.circle,
+              border: Border.all(color: borderColor),
+            ),
+            child: Icon(
+              Icons.terminal_rounded,
+              size: 16,
+              color: fgDefault,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            'notease',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: fgDefault,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: isDark ? GitHubColors.darkCanvasInset : GitHubColors.lightCanvasInset,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: borderColor, width: 1),
+            ),
+            child: Text(
+              'Public',
+              style: TextStyle(
+                fontSize: 11,
+                color: fgMuted,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+
+          // GitHub Quick Search Box
+          Expanded(
+            child: Container(
+              height: 28,
+              constraints: const BoxConstraints(maxWidth: 320),
+              decoration: BoxDecoration(
+                color: isDark ? GitHubColors.darkCanvasInset : GitHubColors.lightCanvasDefault,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: borderColor, width: 1),
+              ),
+              child: TextField(
+                controller: _searchController,
+                onChanged: (q) => ref.read(searchQueryProvider.notifier).state = q,
+                style: TextStyle(fontSize: 12, color: fgDefault),
+                decoration: InputDecoration(
+                  filled: false,
+                  hintText: 'Type "/" to search notes...',
+                  hintStyle: TextStyle(
+                    fontSize: 12,
+                    color: isDark ? GitHubColors.darkFgSubtle : GitHubColors.lightFgSubtle,
+                  ),
+                  prefixIcon: Icon(
+                    Icons.search_rounded,
+                    size: 14,
+                    color: fgMuted,
+                  ),
+                  prefixIconConstraints: const BoxConstraints(minWidth: 28),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 6),
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                ),
+              ),
+            ),
+          ),
+
+          const Spacer(),
+
+          // New Note GitHub Green Primary Button
+          Material(
+            color: GitHubColors.darkSuccessEmphasis,
+            borderRadius: BorderRadius.circular(6),
+            child: InkWell(
+              onTap: () => ref.read(notesNotifierProvider.notifier).createNote(),
+              borderRadius: BorderRadius.circular(6),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.15),
+                    width: 1,
+                  ),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.add_rounded, size: 14, color: Colors.white),
+                    SizedBox(width: 5),
+                    Text(
+                      'New note',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDesktopLayout(
+    List<Note> notes,
+    String? selectedId,
+    bool isDark,
+    Color borderColor,
+  ) {
     final selectedIndex = notes.indexWhere((n) => n.id == selectedId);
-    final leftNotes = selectedIndex > 0 ? notes.sublist(0, selectedIndex) : [];
+    final leftNotes = selectedIndex > 0 ? notes.sublist(0, selectedIndex) : <Note>[];
     final rightNotes = selectedIndex >= 0 && selectedIndex < notes.length - 1
         ? notes.sublist(selectedIndex + 1)
-        : (selectedIndex < 0 ? notes : []);
+        : (selectedIndex < 0 ? notes : <Note>[]);
 
     return Row(
       children: [
         // Navigation sidebar
         AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
+          duration: const Duration(milliseconds: 200),
           curve: Curves.easeInOut,
-          width: _navExpanded ? 240 : 64,
+          width: _navExpanded ? 220 : 54,
           child: NavSidebar(
             isExpanded: _navExpanded,
             onToggle: () => setState(() => _navExpanded = !_navExpanded),
@@ -68,7 +235,7 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage>
         // Left collapsed note strips
         if (leftNotes.isNotEmpty)
           NoteAccordionStrip(
-            notes: leftNotes.cast(),
+            notes: leftNotes,
             isLeft: true,
             onNoteSelected: (id) {
               ref.read(selectedNoteIdProvider.notifier).state = id;
@@ -81,14 +248,14 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage>
               ? NoteContentPanel(
                   noteId: selectedId,
                   key: ValueKey(selectedId),
-                ).animate().fadeIn(duration: 200.ms).slideX(begin: 0.02)
+                )
               : const EmptyState(),
         ),
 
         // Right collapsed note strips
         if (rightNotes.isNotEmpty)
           NoteAccordionStrip(
-            notes: rightNotes.cast(),
+            notes: rightNotes,
             isLeft: false,
             onNoteSelected: (id) {
               ref.read(selectedNoteIdProvider.notifier).state = id;
@@ -98,164 +265,137 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage>
     );
   }
 
-  Widget _buildMobileLayout(List<dynamic> notes, String? selectedId) {
+  Widget _buildMobileLayout(
+    List<Note> notes,
+    String? selectedId,
+    bool isDark,
+    Color borderColor,
+  ) {
     if (selectedId != null && notes.any((n) => n.id == selectedId)) {
-      return Column(
-        children: [
-          // Mobile top bar
-          _buildMobileTopBar(),
-          Expanded(
-            child: NoteContentPanel(noteId: selectedId, key: ValueKey(selectedId)),
-          ),
-        ],
-      );
+      return NoteContentPanel(noteId: selectedId, key: ValueKey(selectedId));
     }
-    // Show notes list
-    return Column(
-      children: [
-        _buildMobileTopBar(),
-        Expanded(
-          child: notes.isEmpty
-              ? const EmptyState()
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: notes.length,
-                  itemBuilder: (ctx, i) {
-                    final note = notes[i];
-                    return _MobileNoteCard(
-                      note: note,
-                      onTap: () => ref.read(selectedNoteIdProvider.notifier).state = note.id,
-                    );
-                  },
-                ),
-        ),
-      ],
+    return ListView.builder(
+      padding: const EdgeInsets.all(12),
+      itemCount: notes.length,
+      itemBuilder: (ctx, i) {
+        final note = notes[i];
+        return _MobileGitHubNoteCard(
+          note: note,
+          isDark: isDark,
+          borderColor: borderColor,
+          onTap: () => ref.read(selectedNoteIdProvider.notifier).state = note.id,
+        );
+      },
     );
-  }
-
-  Widget _buildMobileTopBar() {
-    return Container(
-      height: 56 + MediaQuery.of(context).padding.top,
-      padding: EdgeInsets.only(
-        top: MediaQuery.of(context).padding.top,
-        left: 16,
-        right: 16,
-      ),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        border: Border(
-          bottom: BorderSide(
-            color: Theme.of(context).dividerColor,
-            width: 0.5,
-          ),
-        ),
-      ),
-      child: Row(
-        children: [
-          Text(
-            'NoteEase',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: AppColors.accent,
-            ),
-          ),
-          const Spacer(),
-          IconButton(
-            icon: const Icon(Icons.search_rounded),
-            onPressed: () {},
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () {},
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFab(BuildContext context) {
-    return FloatingActionButton(
-      onPressed: () => ref.read(notesNotifierProvider.notifier).createNote(),
-      backgroundColor: AppColors.accent,
-      foregroundColor: Colors.white,
-      elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: const Icon(Icons.add_rounded, size: 24),
-    ).animate().scale(delay: 300.ms, duration: 400.ms, curve: Curves.elasticOut);
   }
 }
 
-class _MobileNoteCard extends StatelessWidget {
-  const _MobileNoteCard({required this.note, required this.onTap});
-  final dynamic note;
+class _MobileGitHubNoteCard extends StatelessWidget {
+  const _MobileGitHubNoteCard({
+    required this.note,
+    required this.isDark,
+    required this.borderColor,
+    required this.onTap,
+  });
+
+  final Note note;
+  final bool isDark;
+  final Color borderColor;
   final VoidCallback onTap;
+
+  Color _badgeColor(NoteColor color) {
+    if (isDark) {
+      switch (color) {
+        case NoteColor.sage:
+          return GitHubColors.darkNoteGreen;
+        case NoteColor.sky:
+          return GitHubColors.darkNoteBlue;
+        case NoteColor.lavender:
+          return GitHubColors.darkNotePurple;
+        case NoteColor.peach:
+          return GitHubColors.darkNoteOrange;
+        case NoteColor.butter:
+          return GitHubColors.darkNoteYellow;
+        case NoteColor.mint:
+          return GitHubColors.darkNoteTeal;
+        case NoteColor.rose:
+          return GitHubColors.darkNotePink;
+      }
+    } else {
+      switch (color) {
+        case NoteColor.sage:
+          return const Color(0xFF1A7F37);
+        case NoteColor.sky:
+          return const Color(0xFF0969DA);
+        case NoteColor.lavender:
+          return const Color(0xFF8250DF);
+        case NoteColor.peach:
+          return const Color(0xFFBC4C00);
+        case NoteColor.butter:
+          return const Color(0xFF9A6700);
+        case NoteColor.mint:
+          return const Color(0xFF1B7C83);
+        case NoteColor.rose:
+          return const Color(0xFFBF3989);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: GestureDetector(
+    final fgDefault = isDark ? GitHubColors.darkFgDefault : GitHubColors.lightFgDefault;
+    final fgMuted = isDark ? GitHubColors.darkFgMuted : GitHubColors.lightFgMuted;
+    final color = _badgeColor(note.color);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: isDark ? GitHubColors.darkCanvasSubtle : GitHubColors.lightCanvasDefault,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: borderColor, width: 1),
+      ),
+      child: ListTile(
         onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: Theme.of(context).dividerColor,
-              width: 0.5,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        title: Row(
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
             ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 10,
-                    height: 10,
-                    decoration: BoxDecoration(
-                      color: _noteColor(note.color.name),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      note.title.isEmpty ? 'Untitled' : note.title,
-                      style: Theme.of(context).textTheme.titleSmall,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                note.title.isEmpty ? 'Untitled note' : note.title,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: fgDefault,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              if (note.content.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Text(
+            ),
+            if (note.isPinned)
+              Icon(Icons.push_pin_rounded, size: 14, color: isDark ? GitHubColors.darkAccentFg : GitHubColors.lightAccentFg),
+          ],
+        ),
+        subtitle: note.content.isNotEmpty
+            ? Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
                   note.content,
-                  style: Theme.of(context).textTheme.bodySmall,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: fgMuted,
+                  ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-              ],
-            ],
-          ),
-        ),
+              )
+            : null,
       ),
     );
-  }
-
-  Color _noteColor(String name) {
-    const map = {
-      'sage': AppColors.noteSage,
-      'lavender': AppColors.noteLavender,
-      'peach': AppColors.notePeach,
-      'sky': AppColors.noteSky,
-      'butter': AppColors.noteButter,
-      'mint': AppColors.noteMint,
-      'rose': AppColors.noteRose,
-    };
-    return map[name] ?? AppColors.noteSage;
   }
 }

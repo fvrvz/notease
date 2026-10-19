@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:notease/core/theme/app_theme.dart';
 
@@ -8,66 +7,156 @@ class WelcomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final borderColor = isDark ? GitHubColors.darkBorderDefault : GitHubColors.lightBorderDefault;
+    final surfaceColor = isDark ? GitHubColors.darkCanvasSubtle : GitHubColors.lightCanvasDefault;
+    final canvasColor = isDark ? GitHubColors.darkCanvasDefault : GitHubColors.lightCanvasSubtle;
+    final fgDefault = isDark ? GitHubColors.darkFgDefault : GitHubColors.lightFgDefault;
+    final fgMuted = isDark ? GitHubColors.darkFgMuted : GitHubColors.lightFgMuted;
+
     return Scaffold(
+      backgroundColor: canvasColor,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Spacer(flex: 2),
-              // Logo
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppColors.accent, Color(0xFF9B8EFF)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 380),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // GitHub Octocat-style Box Logo
+                  Container(
+                    width: 54,
+                    height: 54,
+                    decoration: BoxDecoration(
+                      color: surfaceColor,
+                      borderRadius: BorderRadius.circular(27),
+                      border: Border.all(color: borderColor, width: 1),
+                    ),
+                    child: Icon(
+                      Icons.terminal_rounded,
+                      size: 28,
+                      color: fgDefault,
+                    ),
                   ),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Icon(Icons.note_alt_outlined, color: Colors.white, size: 32),
-              ).animate().fadeIn(duration: 600.ms).slideY(begin: 0.2),
-              const SizedBox(height: 24),
-              Text(
-                'NoteEase',
-                style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
-              ).animate().fadeIn(delay: 100.ms, duration: 600.ms).slideY(begin: 0.2),
-              const SizedBox(height: 12),
-              Text(
-                'Beautiful notes,\nsync anywhere.',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                  height: 1.4,
-                ),
-              ).animate().fadeIn(delay: 200.ms, duration: 600.ms).slideY(begin: 0.2),
-              const Spacer(flex: 3),
-              // Sign in buttons
-              _SignInButton(
-                label: 'Continue with Google',
-                icon: Icons.g_mobiledata_rounded,
-                color: const Color(0xFF4285F4),
-                onTap: () => context.go('/'),
-              ).animate().fadeIn(delay: 400.ms, duration: 500.ms).slideY(begin: 0.1),
-              const SizedBox(height: 12),
-              _SignInButton(
-                label: 'Continue as Guest',
-                icon: Icons.person_outline_rounded,
-                color: AppColors.accent,
-                onTap: () => context.go('/'),
-              ).animate().fadeIn(delay: 500.ms, duration: 500.ms).slideY(begin: 0.1),
-              const SizedBox(height: 32),
-              Center(
-                child: Text(
-                  'More sign-in options coming soon',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ).animate().fadeIn(delay: 600.ms, duration: 500.ms),
-            ],
+                  const SizedBox(height: 20),
+                  Text(
+                    'Sign in to NoteEase',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w400,
+                      letterSpacing: -0.5,
+                      color: fgDefault,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // GitHub-style Authentication Card
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: surfaceColor,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: borderColor, width: 1),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Google Button
+                        _GitHubAuthButton(
+                          label: 'Sign in with Google',
+                          icon: Icons.g_mobiledata_rounded,
+                          isPrimary: false,
+                          isDark: isDark,
+                          borderColor: borderColor,
+                          onTap: () => context.go('/'),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Microsoft Button
+                        _GitHubAuthButton(
+                          label: 'Sign in with Microsoft',
+                          icon: Icons.window_rounded,
+                          isPrimary: false,
+                          isDark: isDark,
+                          borderColor: borderColor,
+                          onTap: () => context.go('/'),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Apple Button
+                        _GitHubAuthButton(
+                          label: 'Sign in with Apple',
+                          icon: Icons.apple_rounded,
+                          isPrimary: false,
+                          isDark: isDark,
+                          borderColor: borderColor,
+                          onTap: () => context.go('/'),
+                        ),
+                        const SizedBox(height: 16),
+
+                        Row(
+                          children: [
+                            Expanded(child: Divider(color: borderColor, height: 1)),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 10),
+                              child: Text(
+                                'or',
+                                style: TextStyle(fontSize: 12, color: fgMuted),
+                              ),
+                            ),
+                            Expanded(child: Divider(color: borderColor, height: 1)),
+                          ],
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        // GitHub Green Primary Action: Guest Mode
+                        _GitHubAuthButton(
+                          label: 'Continue as Guest',
+                          icon: Icons.person_outline_rounded,
+                          isPrimary: true,
+                          isDark: isDark,
+                          borderColor: borderColor,
+                          onTap: () => context.go('/'),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: borderColor, width: 1),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'No account required. ',
+                          style: TextStyle(fontSize: 13, color: fgMuted),
+                        ),
+                        GestureDetector(
+                          onTap: () => context.go('/'),
+                          child: Text(
+                            'Start writing →',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: isDark ? GitHubColors.darkAccentFg : GitHubColors.lightAccentFg,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -75,37 +164,94 @@ class WelcomePage extends StatelessWidget {
   }
 }
 
-class _SignInButton extends StatelessWidget {
-  const _SignInButton({
+class _GitHubAuthButton extends StatelessWidget {
+  const _GitHubAuthButton({
     required this.label,
     required this.icon,
-    required this.color,
     required this.onTap,
+    required this.isPrimary,
+    required this.isDark,
+    required this.borderColor,
   });
+
   final String label;
   final IconData icon;
-  final Color color;
   final VoidCallback onTap;
+  final bool isPrimary;
+  final bool isDark;
+  final Color borderColor;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 52,
-      child: ElevatedButton.icon(
-        onPressed: onTap,
-        icon: Icon(icon, size: 22),
-        label: Text(label),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: color,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+    if (isPrimary) {
+      // GitHub green button
+      return Material(
+        color: GitHubColors.darkSuccessEmphasis,
+        borderRadius: BorderRadius.circular(6),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(6),
+          child: Container(
+            height: 38,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.2),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 16, color: Colors.white),
+                const SizedBox(width: 8),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
           ),
-          textStyle: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w500,
+        ),
+      );
+    }
+
+    // Secondary Outline Button
+    final bgColor = isDark ? GitHubColors.darkCanvasInset : GitHubColors.lightCanvasInset;
+    final fgColor = isDark ? GitHubColors.darkFgDefault : GitHubColors.lightFgDefault;
+
+    return Material(
+      color: bgColor,
+      borderRadius: BorderRadius.circular(6),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(6),
+        child: Container(
+          height: 38,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: borderColor, width: 1),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 16, color: fgColor),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: fgColor,
+                ),
+              ),
+            ],
           ),
         ),
       ),
