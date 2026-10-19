@@ -14,10 +14,12 @@ class NoteContentPanel extends ConsumerStatefulWidget {
     super.key,
     required this.noteId,
     this.onCollapse,
+    this.isFullyExpanded = true,
   });
 
   final String noteId;
   final VoidCallback? onCollapse;
+  final bool isFullyExpanded;
 
   @override
   ConsumerState<NoteContentPanel> createState() => _NoteContentPanelState();
@@ -153,34 +155,41 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
                   final showFormatting = constraints.maxWidth >= 540;
                   return Row(
                     children: [
-                      // Collapse / Toggle Note Button
-                      Tooltip(
-                        message: 'Collapse note (Esc)',
-                        child: InkWell(
-                          onTap: () {
-                            if (widget.onCollapse != null) {
-                              widget.onCollapse!();
-                            } else {
-                              ref.read(selectedNoteIdProvider.notifier).state = null;
-                            }
-                          },
-                          borderRadius: BorderRadius.circular(AppTheme.radius),
-                          child: Container(
-                            width: 26,
-                            height: 26,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: isDark ? AppColors.darkCanvasInset : AppColors.lightCanvasInset,
-                              borderRadius: BorderRadius.circular(AppTheme.radius),
-                              border: Border.all(color: borderColor, width: 1),
-                            ),
-                            child: Icon(
-                              Icons.chevron_left_rounded,
-                              size: 18,
-                              color: isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault,
-                            ),
-                          ),
-                        ),
+                      // Collapse / Toggle Note Button (hidden during expansion animation)
+                      AnimatedOpacity(
+                        duration: const Duration(milliseconds: 150),
+                        opacity: widget.isFullyExpanded ? 1.0 : 0.0,
+                        curve: Curves.easeOutCubic,
+                        child: widget.isFullyExpanded
+                            ? Tooltip(
+                                message: 'Collapse note (Esc)',
+                                child: InkWell(
+                                  onTap: () {
+                                    if (widget.onCollapse != null) {
+                                      widget.onCollapse!();
+                                    } else {
+                                      ref.read(selectedNoteIdProvider.notifier).state = null;
+                                    }
+                                  },
+                                  borderRadius: BorderRadius.circular(AppTheme.radius),
+                                  child: Container(
+                                    width: 26,
+                                    height: 26,
+                                    alignment: Alignment.center,
+                                    decoration: BoxDecoration(
+                                      color: isDark ? AppColors.darkCanvasInset : AppColors.lightCanvasInset,
+                                      borderRadius: BorderRadius.circular(AppTheme.radius),
+                                      border: Border.all(color: borderColor, width: 1),
+                                    ),
+                                    child: Icon(
+                                      Icons.chevron_left_rounded,
+                                      size: 18,
+                                      color: isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault,
+                                    ),
+                                  ),
+                                ),
+                              )
+                            : const SizedBox(width: 26, height: 26),
                       ),
                       const SizedBox(width: 8),
                       // Note Color Dot
