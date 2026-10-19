@@ -210,18 +210,21 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage> {
     String searchQuery,
   ) {
     final selectedIndex = notes.indexWhere((n) => n.id == selectedId);
-    final leftNotes = selectedIndex > 0 ? notes.sublist(0, selectedIndex) : <Note>[];
+    // When no note is selected or when searching, all notes float on the LEFT
+    final leftNotes = selectedIndex > 0
+        ? notes.sublist(0, selectedIndex)
+        : (selectedIndex < 0 ? notes : <Note>[]);
     final rightNotes = selectedIndex >= 0 && selectedIndex < notes.length - 1
         ? notes.sublist(selectedIndex + 1)
-        : (selectedIndex < 0 ? notes : <Note>[]);
+        : <Note>[];
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // Sidebar (fixed width)
         AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOutCubic,
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeInOutCubic,
           width: _navExpanded ? 200 : 52,
           child: NavSidebar(
             isExpanded: _navExpanded,
@@ -239,21 +242,26 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage> {
             },
           ),
 
-        // Left-aligned Active Note Panel with smooth AnimatedSize & AnimatedSwitcher
+        // Left-aligned Active Note Panel with smooth ease-in-out expand/collapse animation
         Expanded(
           child: Align(
             alignment: Alignment.centerLeft,
             child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 220),
-              reverseDuration: const Duration(milliseconds: 160),
-              switchInCurve: Curves.easeOutCubic,
-              switchOutCurve: Curves.easeInCubic,
+              duration: const Duration(milliseconds: 320),
+              reverseDuration: const Duration(milliseconds: 260),
+              switchInCurve: Curves.easeInOutCubic,
+              switchOutCurve: Curves.easeInOutCubic,
               transitionBuilder: (child, animation) {
+                final curved = CurvedAnimation(
+                  parent: animation,
+                  curve: Curves.easeInOutCubic,
+                  reverseCurve: Curves.easeInOutCubic,
+                );
                 return FadeTransition(
-                  opacity: animation,
+                  opacity: curved,
                   child: ClipRect(
                     child: SizeTransition(
-                      sizeFactor: animation,
+                      sizeFactor: curved,
                       axis: Axis.horizontal,
                       alignment: Alignment.centerLeft,
                       child: child,

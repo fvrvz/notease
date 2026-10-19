@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:notease/core/theme/app_theme.dart';
@@ -21,6 +22,7 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
   late MarkdownSyntaxTextEditingController _contentController;
   Timer? _debounce;
   Note? _currentNote;
+  bool _isPreviewMode = false;
 
   @override
   void initState() {
@@ -186,6 +188,19 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
                     ),
                     const SizedBox(width: 4),
                     _HeaderIconButton(
+                      tooltip: _isPreviewMode ? 'Switch to Edit' : 'Preview Note',
+                      icon: _isPreviewMode
+                          ? Icons.edit_outlined
+                          : Icons.visibility_outlined,
+                      active: _isPreviewMode,
+                      isDark: isDark,
+                      borderColor: borderColor,
+                      onTap: () {
+                        setState(() => _isPreviewMode = !_isPreviewMode);
+                      },
+                    ),
+                    const SizedBox(width: 4),
+                    _HeaderIconButton(
                       tooltip: _currentNote?.isPinned == true ? 'Unpin' : 'Pin',
                       icon: _currentNote?.isPinned == true
                           ? Icons.push_pin_rounded
@@ -221,36 +236,87 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
             ),
           ),
 
-          // Real-time WYSIWYG / Markdown Editor Area
+          // Real-time WYSIWYG / Markdown Editor or Pure Preview Area
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              child: TextField(
-                controller: _contentController,
-                onChanged: (_) => _onChanged(),
-                maxLines: null,
-                expands: true,
-                style: TextStyle(
-                  height: 1.6,
-                  fontSize: 14,
-                  color: isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault,
-                ),
-                decoration: InputDecoration(
-                  filled: false,
-                  border: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: InputBorder.none,
-                  contentPadding: EdgeInsets.zero,
-                  hintText: 'Start writing markdown here (# Header, **bold**, *italic*, `code`, - list)...',
-                  hintStyle: TextStyle(
-                    color: isDark ? AppColors.darkFgSubtle : AppColors.lightFgSubtle,
-                    fontSize: 14,
-                    height: 1.6,
+            child: _isPreviewMode
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    child: Markdown(
+                      data: _contentController.text.trim().isEmpty
+                          ? '*No content in note yet. Switch to Edit mode to start writing.*'
+                          : _contentController.text,
+                      selectable: true,
+                      padding: EdgeInsets.zero,
+                      styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
+                        p: TextStyle(
+                          fontSize: 14,
+                          height: 1.6,
+                          color: isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault,
+                        ),
+                        h1: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.5,
+                          color: isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault,
+                        ),
+                        h2: TextStyle(
+                          fontSize: 19,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.3,
+                          color: isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault,
+                        ),
+                        h3: TextStyle(
+                          fontSize: 15.5,
+                          fontWeight: FontWeight.w600,
+                          color: isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault,
+                        ),
+                        code: TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 13,
+                          color: isDark ? const Color(0xFF58A6FF) : const Color(0xFF0969DA),
+                          backgroundColor: isDark ? const Color(0xFF161B22) : const Color(0xFFF0F2F5),
+                        ),
+                        blockquoteDecoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF161B22) : const Color(0xFFF6F8FA),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border(
+                            left: BorderSide(
+                              color: isDark ? AppColors.accent : AppColors.accentLight,
+                              width: 3,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                : Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    child: TextField(
+                      controller: _contentController,
+                      onChanged: (_) => _onChanged(),
+                      maxLines: null,
+                      expands: true,
+                      style: TextStyle(
+                        height: 1.6,
+                        fontSize: 14,
+                        color: isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault,
+                      ),
+                      decoration: InputDecoration(
+                        filled: false,
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        contentPadding: EdgeInsets.zero,
+                        hintText: 'Start writing markdown here (# Header, **bold**, *italic*, `code`, - list)...',
+                        hintStyle: TextStyle(
+                          color: isDark ? AppColors.darkFgSubtle : AppColors.lightFgSubtle,
+                          fontSize: 14,
+                          height: 1.6,
+                        ),
+                      ),
+                      textAlignVertical: TextAlignVertical.top,
+                    ),
                   ),
-                ),
-                textAlignVertical: TextAlignVertical.top,
-              ),
-            ),
           ),
           if (_currentNote != null)
             Container(

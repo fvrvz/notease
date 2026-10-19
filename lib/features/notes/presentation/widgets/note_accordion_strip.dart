@@ -17,8 +17,8 @@ class NoteAccordionStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Show up to 4 note strips (152px) before scrolling horizontally
-    final stripWidth = math.min(notes.length * 38.0, 152.0);
+    // Show up to 4 note strips (160px) before scrolling horizontally
+    final stripWidth = math.min(notes.length * 40.0, 160.0);
 
     return ConstrainedBox(
       constraints: BoxConstraints(
@@ -105,11 +105,11 @@ class _NoteStripState extends State<_NoteStrip> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 140),
           curve: Curves.easeOutCubic,
-          width: _isHovered ? 48 : 34,
+          width: 36,
           margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
           decoration: BoxDecoration(
             color: _isHovered
-                ? color.withValues(alpha: isDark ? 0.2 : 0.12)
+                ? color.withValues(alpha: isDark ? 0.22 : 0.14)
                 : surfaceColor,
             borderRadius: BorderRadius.circular(AppTheme.radius),
             border: Border.all(
@@ -141,8 +141,10 @@ class _NoteStripState extends State<_NoteStrip> {
                         widget.note.title.isEmpty ? 'Untitled' : widget.note.title,
                         style: TextStyle(
                           fontSize: 11.5,
-                          fontWeight: _isHovered ? FontWeight.w600 : FontWeight.w500,
-                          color: _isHovered ? color : textColor,
+                          fontWeight: FontWeight.w500,
+                          color: _isHovered
+                              ? (isDark ? Colors.white : const Color(0xFF1F2328))
+                              : textColor,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
