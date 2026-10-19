@@ -2,7 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:notease/core/theme/app_theme.dart';
 
 class EmptyState extends StatelessWidget {
-  const EmptyState({super.key});
+  const EmptyState({
+    super.key,
+    this.title,
+    this.message,
+    this.icon,
+  });
+
+  final String? title;
+  final String? message;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
@@ -34,14 +43,14 @@ class EmptyState extends StatelessWidget {
                 border: Border.all(color: borderColor),
               ),
               child: Icon(
-                Icons.edit_note_rounded,
+                icon ?? Icons.edit_note_rounded,
                 size: 22,
                 color: accent,
               ),
             ),
             const SizedBox(height: 16),
             Text(
-              'No note selected',
+              title ?? 'No note selected',
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
@@ -50,7 +59,7 @@ class EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              'Click on any note strip on the side to expand it, or create a new note.',
+              message ?? 'Click on any note strip on the side to expand it, or create a new note.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 13,

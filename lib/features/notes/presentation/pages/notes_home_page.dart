@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:notease/core/theme/app_theme.dart';
 import 'package:notease/domain/models/note.dart';
 import 'package:notease/features/notes/providers/notes_provider.dart';
@@ -29,6 +30,7 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage> {
   Widget build(BuildContext context) {
     final notesAsync = ref.watch(filteredNotesProvider);
     final selectedId = ref.watch(selectedNoteIdProvider);
+    final searchQuery = ref.watch(searchQueryProvider);
     final screenWidth = MediaQuery.sizeOf(context).width;
     final isMobile = screenWidth < 768;
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -39,7 +41,7 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage> {
       backgroundColor: isDark ? AppColors.darkCanvasDefault : AppColors.lightCanvasSubtle,
       body: Column(
         children: [
-          _buildAppTopBar(context, isDark, borderColor, headerBg, isMobile, selectedId),
+          _buildAppTopBar(context, isDark, borderColor, headerBg, isMobile, selectedId, searchQuery),
           Expanded(
             child: notesAsync.when(
               loading: () => Center(
@@ -51,9 +53,9 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage> {
               error: (e, _) => Center(child: Text('Error: $e')),
               data: (notes) {
                 if (isMobile) {
-                  return _buildMobileResponsiveLayout(notes, selectedId, isDark, borderColor);
+                  return _buildMobileResponsiveLayout(notes, selectedId, isDark, borderColor, searchQuery);
                 }
-                return _buildDesktopLayout(notes, selectedId, isDark, borderColor);
+                return _buildDesktopLayout(notes, selectedId, isDark, borderColor, searchQuery);
               },
             ),
           ),
@@ -69,6 +71,7 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage> {
     Color headerBg,
     bool isMobile,
     String? selectedId,
+    String searchQuery,
   ) {
     final fgDefault = isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault;
     final fgMuted = isDark ? AppColors.darkFgMuted : AppColors.lightFgMuted;
@@ -107,13 +110,20 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage> {
               ),
               child: TextField(
                 controller: _searchController,
+                textAlignVertical: TextAlignVertical.center,
                 onChanged: (q) => ref.read(searchQueryProvider.notifier).state = q,
-                style: TextStyle(fontSize: 13, color: fgDefault),
+                style: TextStyle(
+                  fontSize: 13,
+                  height: 1.2,
+                  color: fgDefault,
+                ),
                 decoration: InputDecoration(
                   filled: false,
-                  hintText: 'Search notes...',
+                  isDense: true,
+                  hintText: 'Search title, content, date, tags...',
                   hintStyle: TextStyle(
                     fontSize: 13,
+                    height: 1.2,
                     color: isDark ? AppColors.darkFgSubtle : AppColors.lightFgSubtle,
                   ),
                   prefixIcon: Icon(
@@ -121,9 +131,38 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage> {
                     size: 15,
                     color: fgMuted,
                   ),
-                  prefixIconConstraints: const BoxConstraints(minWidth: 30),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 6),
-                  isDense: true,
+                  prefixIconConstraints: const BoxConstraints(
+                    minWidth: 32,
+                    minHeight: 32,
+                    maxWidth: 32,
+                    maxHeight: 32,
+                  ),
+                  suffixIcon: searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.close_rounded, size: 14),
+                          color: fgMuted,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 28,
+                            minHeight: 32,
+                            maxWidth: 28,
+                            maxHeight: 32,
+                          ),
+                          splashRadius: 14,
+                          tooltip: 'Clear search',
+                          onPressed: () {
+                            _searchController.clear();
+                            ref.read(searchQueryProvider.notifier).state = '';
+                          },
+                        )
+                      : null,
+                  suffixIconConstraints: const BoxConstraints(
+                    minWidth: 28,
+                    minHeight: 32,
+                    maxWidth: 28,
+                    maxHeight: 32,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
                   border: InputBorder.none,
                   enabledBorder: InputBorder.none,
                   focusedBorder: InputBorder.none,
@@ -168,6 +207,7 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage> {
     String? selectedId,
     bool isDark,
     Color borderColor,
+    String searchQuery,
   ) {
     final selectedIndex = notes.indexWhere((n) => n.id == selectedId);
     final leftNotes = selectedIndex > 0 ? notes.sublist(0, selectedIndex) : <Note>[];
@@ -214,7 +254,7 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage> {
                   child: SizeTransition(
                     sizeFactor: animation,
                     axis: Axis.horizontal,
-                    alignment: Alignment.centerLeft, // expands smoothly from left
+                    alignment: Alignment.centerLeft,
                     child: child,
                   ),
                 );
@@ -227,10 +267,16 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage> {
                         noteId: selectedId,
                       ),
                     )
-                  : const Padding(
-                      key: ValueKey('empty_state'),
-                      padding: EdgeInsets.all(16),
-                      child: EmptyState(),
+                  : Padding(
+                      key: ValueKey('empty_state_${searchQuery.isNotEmpty}'),
+                      padding: const EdgeInsets.all(16),
+                      child: EmptyState(
+                        title: searchQuery.isNotEmpty ? 'No matching notes' : null,
+                        message: searchQuery.isNotEmpty
+                            ? 'No notes matched "$searchQuery". Try searching by title, content, date, color, or tags.'
+                            : null,
+                        icon: searchQuery.isNotEmpty ? Icons.search_off_rounded : null,
+                      ),
                     ),
             ),
           ),
@@ -254,6 +300,7 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage> {
     String? selectedId,
     bool isDark,
     Color borderColor,
+    String searchQuery,
   ) {
     if (selectedId != null && notes.any((n) => n.id == selectedId)) {
       return Padding(
@@ -263,7 +310,13 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage> {
     }
 
     if (notes.isEmpty) {
-      return const EmptyState();
+      return EmptyState(
+        title: searchQuery.isNotEmpty ? 'No matching notes' : null,
+        message: searchQuery.isNotEmpty
+            ? 'No notes matched "$searchQuery". Try searching by title, content, date, color, or tags.'
+            : null,
+        icon: searchQuery.isNotEmpty ? Icons.search_off_rounded : null,
+      );
     }
 
     return ListView.builder(
@@ -329,7 +382,7 @@ class _MobileNoteCard extends StatelessWidget {
       ),
       child: ListTile(
         onTap: onTap,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         title: Row(
           children: [
             Container(
@@ -358,8 +411,11 @@ class _MobileNoteCard extends StatelessWidget {
               ),
           ],
         ),
-        subtitle: note.content.isNotEmpty
-            ? Padding(
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (note.content.isNotEmpty)
+              Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(
                   note.content,
@@ -371,8 +427,42 @@ class _MobileNoteCard extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-              )
-            : null,
+              ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Icon(
+                  Icons.calendar_today_outlined,
+                  size: 11,
+                  color: fgMuted,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  DateFormat.yMMMd().format(note.updatedAt),
+                  style: TextStyle(fontSize: 11, color: fgMuted),
+                ),
+                if (note.tags.isNotEmpty) ...[
+                  const SizedBox(width: 8),
+                  ...note.tags.take(3).map(
+                        (tag) => Container(
+                          margin: const EdgeInsets.only(right: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: isDark ? AppColors.darkCanvasInset : AppColors.lightCanvasInset,
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: borderColor, width: 0.8),
+                          ),
+                          child: Text(
+                            '#$tag',
+                            style: TextStyle(fontSize: 10, color: fgMuted),
+                          ),
+                        ),
+                      ),
+                ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

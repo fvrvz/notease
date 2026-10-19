@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:notease/core/theme/app_theme.dart';
 import 'package:notease/data/repositories/note_repository.dart';
 import 'package:notease/domain/models/note.dart';
@@ -240,6 +241,74 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
               ),
             ),
           ),
+          if (_currentNote != null)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+              decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: borderColor, width: 1)),
+                color: headerBg,
+                borderRadius: const BorderRadius.vertical(
+                  bottom: Radius.circular(AppTheme.radius),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.access_time_rounded,
+                    size: 12,
+                    color: isDark ? AppColors.darkFgSubtle : AppColors.lightFgSubtle,
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    'Updated ${DateFormat.yMMMd().format(_currentNote!.updatedAt)}',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: isDark ? AppColors.darkFgSubtle : AppColors.lightFgSubtle,
+                    ),
+                  ),
+                  if (_currentNote!.tags.isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    Text(
+                      '•',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isDark ? AppColors.darkFgSubtle : AppColors.lightFgSubtle,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    ..._currentNote!.tags.map(
+                      (tag) => Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: Text(
+                          '#$tag',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isDark ? AppColors.darkFgMuted : AppColors.lightFgMuted,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                  const Spacer(),
+                  ValueListenableBuilder<TextEditingValue>(
+                    valueListenable: _contentController,
+                    builder: (context, value, _) {
+                      final words = value.text.trim().isEmpty
+                          ? 0
+                          : value.text.trim().split(RegExp(r'\s+')).length;
+                      return Text(
+                        '$words words',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: isDark ? AppColors.darkFgSubtle : AppColors.lightFgSubtle,
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );
