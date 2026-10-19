@@ -9,11 +9,13 @@ class NoteAccordionStrip extends StatelessWidget {
     required this.notes,
     required this.isLeft,
     required this.onNoteSelected,
+    this.selectedId,
   });
 
   final List<Note> notes;
   final bool isLeft;
   final void Function(String id) onNoteSelected;
+  final String? selectedId;
 
   @override
   Widget build(BuildContext context) {
@@ -39,6 +41,7 @@ class NoteAccordionStrip extends StatelessWidget {
                       note: entry.value,
                       index: entry.key,
                       isLeft: isLeft,
+                      isSelected: entry.value.id == selectedId,
                       onTap: () => onNoteSelected(entry.value.id),
                     ))
                 .toList(),
@@ -55,12 +58,14 @@ class _NoteStrip extends StatefulWidget {
     required this.index,
     required this.isLeft,
     required this.onTap,
+    this.isSelected = false,
   });
 
   final Note note;
   final int index;
   final bool isLeft;
   final VoidCallback onTap;
+  final bool isSelected;
 
   @override
   State<_NoteStrip> createState() => _NoteStripState();
@@ -96,75 +101,86 @@ class _NoteStripState extends State<_NoteStrip> {
     final surfaceColor = isDark ? AppColors.darkCanvasSubtle : AppColors.lightCanvasDefault;
     final textColor = isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault;
 
-    return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 140),
-          curve: Curves.easeOutCubic,
-          width: 36,
-          margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
-          decoration: BoxDecoration(
-            color: _isHovered
-                ? color.withValues(alpha: isDark ? 0.22 : 0.14)
-                : surfaceColor,
-            borderRadius: BorderRadius.circular(AppTheme.radius),
-            border: Border.all(
-              color: _isHovered ? color : borderColor,
-              width: 1,
-            ),
-          ),
-          child: Column(
-            children: [
-              // Colored dot badge indicator at top
-              Padding(
-                padding: const EdgeInsets.only(top: 8, bottom: 6),
-                child: Container(
-                  width: 7,
-                  height: 7,
-                  decoration: BoxDecoration(
-                    color: color,
-                    shape: BoxShape.circle,
-                  ),
-                ),
+    return Tooltip(
+      message: widget.isSelected
+          ? 'Active Note: Click to collapse'
+          : (widget.note.title.isEmpty ? 'Untitled note' : widget.note.title),
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _isHovered = true),
+        onExit: (_) => setState(() => _isHovered = false),
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            curve: Curves.easeOutCubic,
+            width: 36,
+            margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
+            decoration: BoxDecoration(
+              color: (widget.isSelected || _isHovered)
+                  ? color.withValues(alpha: isDark ? 0.26 : 0.18)
+                  : surfaceColor,
+              borderRadius: BorderRadius.circular(AppTheme.radius),
+              border: Border.all(
+                color: widget.isSelected ? color : (_isHovered ? color : borderColor),
+                width: widget.isSelected ? 1.5 : 1,
               ),
-              Expanded(
-                child: Center(
-                  child: RotatedBox(
-                    quarterTurns: 3,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 6),
-                      child: Text(
-                        widget.note.title.isEmpty ? 'Untitled' : widget.note.title,
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w500,
-                          color: _isHovered
-                              ? (isDark ? Colors.white : const Color(0xFF1F2328))
-                              : textColor,
+            ),
+            child: Column(
+              children: [
+                // Colored dot badge or collapse icon
+                Padding(
+                  padding: const EdgeInsets.only(top: 8, bottom: 6),
+                  child: widget.isSelected
+                      ? Icon(
+                          Icons.unfold_less_rounded,
+                          size: 13,
+                          color: color,
+                        )
+                      : Container(
+                          width: 7,
+                          height: 7,
+                          decoration: BoxDecoration(
+                            color: color,
+                            shape: BoxShape.circle,
+                          ),
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                ),
+                Expanded(
+                  child: Center(
+                    child: RotatedBox(
+                      quarterTurns: 3,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                        child: Text(
+                          widget.note.title.isEmpty ? 'Untitled' : widget.note.title,
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: widget.isSelected ? FontWeight.w700 : FontWeight.w500,
+                            color: (_isHovered || widget.isSelected)
+                                ? (isDark ? Colors.white : const Color(0xFF1F2328))
+                                : textColor,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-              if (widget.note.isPinned)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Icon(
-                    Icons.push_pin_rounded,
-                    size: 11,
-                    color: color,
-                  ),
-                )
-              else
-                const SizedBox(height: 10),
-            ],
+                if (widget.note.isPinned)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Icon(
+                      Icons.push_pin_rounded,
+                      size: 11,
+                      color: color,
+                    ),
+                  )
+                else
+                  const SizedBox(height: 10),
+              ],
+            ),
           ),
         ),
       ),
