@@ -5,12 +5,10 @@ on:
     branches:
       - main
       - develop
-      - dev
   push:
     branches:
       - main
       - develop
-      - dev
 
 jobs:
   test:
@@ -19,6 +17,8 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -32,5 +32,11 @@ jobs:
       - name: Run Flutter Analyze
         run: flutter analyze
 
-      - name: Run Flutter Tests
-        run: flutter test
+      - name: Run Flutter Tests (Smart Selective Runner)
+        run: |
+          chmod +x tool/run_changed_tests.sh
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            ./tool/run_changed_tests.sh "origin/${{ github.base_ref }}"
+          else
+            ./tool/run_changed_tests.sh
+          fi
