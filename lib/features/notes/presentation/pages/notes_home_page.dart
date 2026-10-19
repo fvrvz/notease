@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -17,12 +18,15 @@ class NotesHomePage extends ConsumerStatefulWidget {
 }
 
 class _NotesHomePageState extends ConsumerState<NotesHomePage>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   bool _navExpanded = true;
   final TextEditingController _searchController = TextEditingController();
   late AnimationController _toggleController;
   late Animation<double> _toggleAnimation;
+  late AnimationController _switchController;
+  late Animation<double> _switchAnimation;
   String? _activeNoteId;
+  String? _closingNoteId;
   String? _pendingNoteId;
   bool _isSwitchingNote = false;
 
@@ -30,20 +34,30 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage>
   void initState() {
     super.initState();
     _toggleController = AnimationController(
-      duration: const Duration(milliseconds: 360),
-      reverseDuration: const Duration(milliseconds: 280),
+      duration: const Duration(milliseconds: 320),
+      reverseDuration: const Duration(milliseconds: 260),
       vsync: this,
     );
     _toggleAnimation = CurvedAnimation(
       parent: _toggleController,
-      curve: Curves.easeInOutCubic,
+      curve: Curves.easeOutCubic,
       reverseCurve: Curves.easeInOutCubic,
+    );
+
+    _switchController = AnimationController(
+      duration: const Duration(milliseconds: 320),
+      vsync: this,
+    );
+    _switchAnimation = CurvedAnimation(
+      parent: _switchController,
+      curve: Curves.easeInOutCubic,
     );
   }
 
   @override
   void dispose() {
     _toggleController.dispose();
+    _switchController.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -53,8 +67,15 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage>
     if (current == id) {
       // Toggle off if already selected
       _pendingNoteId = null;
+      if (_isSwitchingNote) {
+        _switchController.stop();
+        setState(() {
+          _closingNoteId = null;
+          _isSwitchingNote = false;
+        });
+      }
       ref.read(selectedNoteIdProvider.notifier).state = null;
-    } else if (current != null && _toggleController.value > 0.0) {
+    } else if (current != null && (_toggleController.value > 0.0 || _isSwitchingNote)) {
       // Switching from an already-open note directly to another note
       _switchActiveNote(id);
     } else {
@@ -69,44 +90,35 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage>
       _pendingNoteId = targetId;
       return;
     }
+    final previousId = _activeNoteId ?? ref.read(selectedNoteIdProvider);
+    if (previousId == null || previousId == targetId) {
+      _toggleNoteSelection(targetId);
+      return;
+    }
+
     _isSwitchingNote = true;
-    _pendingNoteId = targetId;
+    _pendingNoteId = null;
 
-    // 1. Smoothly fold the current note closed
-    _toggleController
-        .animateTo(
-          0.0,
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeInCubic,
-        )
-        .then((_) {
+    // Run parallel transition: previous note folds while target note unfolds simultaneously
+    setState(() {
+      _closingNoteId = previousId;
+      _activeNoteId = targetId;
+    });
+    ref.read(selectedNoteIdProvider.notifier).state = targetId;
+
+    _switchController.forward(from: 0.0).then((_) {
       if (!mounted) return;
-      final nextId = _pendingNoteId ?? targetId;
-      _pendingNoteId = null;
-
-      // 2. Reposition accordion to the new target note
       setState(() {
-        _activeNoteId = nextId;
+        _closingNoteId = null;
+        _isSwitchingNote = false;
       });
-      ref.read(selectedNoteIdProvider.notifier).state = nextId;
+      _switchController.value = 0.0;
 
-      // 3. Smoothly unfold the new note open
-      _toggleController
-          .animateTo(
-            1.0,
-            duration: const Duration(milliseconds: 260),
-            curve: Curves.easeOutCubic,
-          )
-          .then((_) {
-        if (mounted) {
-          _isSwitchingNote = false;
-          if (_pendingNoteId != null && _pendingNoteId != nextId) {
-            final queued = _pendingNoteId!;
-            _pendingNoteId = null;
-            _switchActiveNote(queued);
-          }
-        }
-      });
+      if (_pendingNoteId != null && _pendingNoteId != targetId) {
+        final nextTarget = _pendingNoteId!;
+        _pendingNoteId = null;
+        _switchActiveNote(nextTarget);
+      }
     });
   }
 
@@ -127,19 +139,27 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage>
 
       if (next != null) {
         if (previous == null || _toggleController.value == 0.0) {
-          setState(() => _activeNoteId = next);
+          setState(() {
+            _activeNoteId = next;
+            _closingNoteId = null;
+          });
           _toggleController.forward(from: 0.0);
         } else if (previous != next) {
           _switchActiveNote(next);
         }
       } else {
         _toggleController.reverse().then((_) {
-          if (mounted) setState(() => _activeNoteId = null);
+          if (mounted) {
+            setState(() {
+              _activeNoteId = null;
+              _closingNoteId = null;
+            });
+          }
         });
       }
     });
 
-    if (selectedId != null && _activeNoteId == null) {
+    if (selectedId != null && _activeNoteId == null && !_isSwitchingNote) {
       _activeNoteId = selectedId;
       _toggleController.value = 1.0;
     }
@@ -290,6 +310,36 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage>
     );
   }
 
+  Widget _buildAnimatedNotePanel({
+    required String noteId,
+    required double widthFactor,
+    required double noteWidth,
+    required bool isFullyExpanded,
+  }) {
+    if (widthFactor <= 0.001) {
+      return const SizedBox.shrink();
+    }
+    return ClipRect(
+      child: Align(
+        alignment: Alignment.centerLeft,
+        widthFactor: widthFactor.clamp(0.0, 1.0),
+        child: Opacity(
+          opacity: widthFactor.clamp(0.0, 1.0),
+          child: Container(
+            width: noteWidth,
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+            child: NoteContentPanel(
+              key: ValueKey(noteId),
+              noteId: noteId,
+              isFullyExpanded: isFullyExpanded,
+              onCollapse: () => _toggleNoteSelection(noteId),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildDesktopLayout(
     List<Note> notes,
     String? selectedId,
@@ -297,24 +347,6 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage>
     Color borderColor,
     String searchQuery,
   ) {
-    // Focus note drives strip rebalancing and active slot during transitions
-    final currentFocusId = _activeNoteId ?? selectedId;
-    final selectedIndex = notes.indexWhere((n) => n.id == currentFocusId);
-
-    // Exclude any active or pending note immediately so its trigger strip does not linger during transitions
-    final excludedIds = {
-      if (currentFocusId != null) currentFocusId,
-      if (_pendingNoteId != null) _pendingNoteId!,
-    };
-
-    // Left notes: notes before current focus (or all notes if none selected)
-    final leftNotes = selectedIndex > 0
-        ? notes.sublist(0, selectedIndex).where((n) => !excludedIds.contains(n.id)).toList()
-        : (selectedIndex < 0 ? notes : <Note>[]);
-    final rightNotes = selectedIndex >= 0 && selectedIndex < notes.length - 1
-        ? notes.sublist(selectedIndex + 1).where((n) => !excludedIds.contains(n.id)).toList()
-        : <Note>[];
-
     final screenWidth = MediaQuery.sizeOf(context).width;
     final navWidth = _navExpanded ? 200.0 : 52.0;
     // Comfortable reading width for the opened note
@@ -336,84 +368,195 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage>
           ),
         ),
 
-        // Main notes row: All notes aligned to the LEFT, flush without gaps: |C||C||Opened||C||C|
+        // Main notes row: All notes aligned to the LEFT, flush without gaps
         Expanded(
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Left collapsed note strips: |C||C|
-                if (leftNotes.isNotEmpty)
-                  NoteAccordionStrip(
-                    notes: leftNotes,
-                    isLeft: true,
-                    selectedId: highlightedStripId,
-                    onNoteSelected: _toggleNoteSelection,
-                  ),
+            child: AnimatedBuilder(
+              animation: Listenable.merge([_toggleAnimation, _switchAnimation]),
+              builder: (context, _) {
+                final isSwitching = _isSwitchingNote &&
+                    _closingNoteId != null &&
+                    _activeNoteId != null &&
+                    _closingNoteId != _activeNoteId;
 
-                // Active Opened Note: ||Opened|| (immediately adjacent to left strips)
-                AnimatedBuilder(
-                  animation: _toggleAnimation,
-                  builder: (context, _) {
-                    final activeId = _activeNoteId ?? selectedId;
-                    final showActiveNote = activeId != null &&
-                        notes.any((n) => n.id == activeId) &&
-                        (_toggleAnimation.value > 0.0 || selectedId != null);
+                final closingId = _closingNoteId;
+                final activeId = _activeNoteId ?? selectedId;
 
-                    if (!showActiveNote) {
-                      return const SizedBox.shrink();
-                    }
+                final idxClosing = closingId != null ? notes.indexWhere((n) => n.id == closingId) : -1;
+                final idxActive = activeId != null ? notes.indexWhere((n) => n.id == activeId) : -1;
 
-                    final isFullyExpanded = _toggleAnimation.value >= 0.98;
+                final List<Widget> rowChildren = [];
 
-                    return ClipRect(
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        widthFactor: _toggleAnimation.value,
-                        child: FadeTransition(
-                          opacity: _toggleAnimation,
-                          child: Container(
-                            width: noteWidth,
-                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-                            child: NoteContentPanel(
-                              key: ValueKey(activeId),
-                              noteId: activeId,
-                              isFullyExpanded: isFullyExpanded,
-                              onCollapse: () => _toggleNoteSelection(activeId),
-                            ),
-                          ),
-                        ),
+                if (isSwitching && idxClosing >= 0 && idxActive >= 0) {
+                  // Simultaneous switching mode:
+                  // Note A folds while Note B unfolds in parallel
+                  final minIdx = math.min(idxClosing, idxActive);
+                  final maxIdx = math.max(idxClosing, idxActive);
+
+                  final firstStrips = notes.sublist(0, minIdx);
+                  final midStrips = notes.sublist(minIdx + 1, maxIdx);
+                  final lastStrips = notes.sublist(maxIdx + 1);
+
+                  // 1. Strips before minIdx
+                  if (firstStrips.isNotEmpty) {
+                    rowChildren.add(
+                      NoteAccordionStrip(
+                        notes: firstStrips,
+                        isLeft: true,
+                        selectedId: highlightedStripId,
+                        onNoteSelected: _toggleNoteSelection,
                       ),
                     );
-                  },
-                ),
+                  }
 
-                // Right collapsed note strips immediately after opened note: ||C||C|
-                if (rightNotes.isNotEmpty)
-                  NoteAccordionStrip(
-                    notes: rightNotes,
-                    isLeft: false,
-                    selectedId: highlightedStripId,
-                    onNoteSelected: _toggleNoteSelection,
-                  ),
+                  // 2. First note slot (at minIdx)
+                  if (idxClosing < idxActive) {
+                    // Closing note is on the left
+                    rowChildren.add(
+                      _buildAnimatedNotePanel(
+                        noteId: closingId!,
+                        widthFactor: (1.0 - _switchAnimation.value),
+                        noteWidth: noteWidth,
+                        isFullyExpanded: false,
+                      ),
+                    );
+                  } else {
+                    // Active note is on the left
+                    rowChildren.add(
+                      _buildAnimatedNotePanel(
+                        noteId: activeId!,
+                        widthFactor: _switchAnimation.value,
+                        noteWidth: noteWidth,
+                        isFullyExpanded: _switchAnimation.value >= 0.98,
+                      ),
+                    );
+                  }
 
-                // Empty state if no notes match
-                if (notes.isEmpty)
-                  Container(
-                    width: 320,
-                    padding: const EdgeInsets.all(16),
-                    child: EmptyState(
-                      title: searchQuery.isNotEmpty ? 'No matching notes' : null,
-                      message: searchQuery.isNotEmpty
-                          ? 'No notes matched "$searchQuery".'
-                          : null,
-                      icon: searchQuery.isNotEmpty ? Icons.search_off_rounded : null,
+                  // 3. Intermediate strips between minIdx and maxIdx
+                  if (midStrips.isNotEmpty) {
+                    rowChildren.add(
+                      NoteAccordionStrip(
+                        notes: midStrips,
+                        isLeft: true,
+                        selectedId: highlightedStripId,
+                        onNoteSelected: _toggleNoteSelection,
+                      ),
+                    );
+                  }
+
+                  // 4. Second note slot (at maxIdx)
+                  if (idxClosing < idxActive) {
+                    // Active note is on the right
+                    rowChildren.add(
+                      _buildAnimatedNotePanel(
+                        noteId: activeId!,
+                        widthFactor: _switchAnimation.value,
+                        noteWidth: noteWidth,
+                        isFullyExpanded: _switchAnimation.value >= 0.98,
+                      ),
+                    );
+                  } else {
+                    // Closing note is on the right
+                    rowChildren.add(
+                      _buildAnimatedNotePanel(
+                        noteId: closingId!,
+                        widthFactor: (1.0 - _switchAnimation.value),
+                        noteWidth: noteWidth,
+                        isFullyExpanded: false,
+                      ),
+                    );
+                  }
+
+                  // 5. Strips after maxIdx
+                  if (lastStrips.isNotEmpty) {
+                    rowChildren.add(
+                      NoteAccordionStrip(
+                        notes: lastStrips,
+                        isLeft: false,
+                        selectedId: highlightedStripId,
+                        onNoteSelected: _toggleNoteSelection,
+                      ),
+                    );
+                  }
+                } else {
+                  // Normal single note or all collapsed mode
+                  final currentFocusId = _activeNoteId ?? selectedId;
+                  final selectedIndex = notes.indexWhere((n) => n.id == currentFocusId);
+
+                  final excludedIds = {
+                    if (currentFocusId != null) currentFocusId,
+                    if (_pendingNoteId != null) _pendingNoteId!,
+                  };
+
+                  final leftNotes = selectedIndex > 0
+                      ? notes.sublist(0, selectedIndex).where((n) => !excludedIds.contains(n.id)).toList()
+                      : (selectedIndex < 0 ? notes : <Note>[]);
+                  final rightNotes = selectedIndex >= 0 && selectedIndex < notes.length - 1
+                      ? notes.sublist(selectedIndex + 1).where((n) => !excludedIds.contains(n.id)).toList()
+                      : <Note>[];
+
+                  if (leftNotes.isNotEmpty) {
+                    rowChildren.add(
+                      NoteAccordionStrip(
+                        notes: leftNotes,
+                        isLeft: true,
+                        selectedId: highlightedStripId,
+                        onNoteSelected: _toggleNoteSelection,
+                      ),
+                    );
+                  }
+
+                  final showActiveNote = activeId != null &&
+                      notes.any((n) => n.id == activeId) &&
+                      (_toggleAnimation.value > 0.0 || selectedId != null);
+
+                  if (showActiveNote) {
+                    rowChildren.add(
+                      _buildAnimatedNotePanel(
+                        noteId: activeId,
+                        widthFactor: _toggleAnimation.value,
+                        noteWidth: noteWidth,
+                        isFullyExpanded: _toggleAnimation.value >= 0.98,
+                      ),
+                    );
+                  }
+
+                  if (rightNotes.isNotEmpty) {
+                    rowChildren.add(
+                      NoteAccordionStrip(
+                        notes: rightNotes,
+                        isLeft: false,
+                        selectedId: highlightedStripId,
+                        onNoteSelected: _toggleNoteSelection,
+                      ),
+                    );
+                  }
+                }
+
+                if (notes.isEmpty) {
+                  rowChildren.add(
+                    Container(
+                      width: 320,
+                      padding: const EdgeInsets.all(16),
+                      child: EmptyState(
+                        title: searchQuery.isNotEmpty ? 'No matching notes' : null,
+                        message: searchQuery.isNotEmpty
+                            ? 'No notes matched "$searchQuery".'
+                            : null,
+                        icon: searchQuery.isNotEmpty ? Icons.search_off_rounded : null,
+                      ),
                     ),
-                  ),
-              ],
+                  );
+                }
+
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: rowChildren,
+                );
+              },
             ),
           ),
         ),
