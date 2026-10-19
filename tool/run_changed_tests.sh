@@ -21,7 +21,7 @@ if [ -z "$BASE_REF" ]; then
 fi
 
 echo "🔍 Detecting changed files compared to $BASE_REF..."
-CHANGED_FILES=$(git diff --name-only "$BASE_REF"...HEAD 2>/dev/null || echo "")
+CHANGED_FILES=$(git diff --name-only "$BASE_REF" 2>/dev/null || git diff --name-only "$BASE_REF"...HEAD 2>/dev/null || echo "")
 
 if [ -z "$CHANGED_FILES" ]; then
   echo "ℹ️ No changed files detected against $BASE_REF. Running full test suite as fallback..."
@@ -97,3 +97,4 @@ else
   done
   flutter test "${UNIQUE_TESTS[@]}"
 fi
+

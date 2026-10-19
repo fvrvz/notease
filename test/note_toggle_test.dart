@@ -50,4 +50,58 @@ void main() {
 
     expect(container.read(selectedNoteIdProvider), isNull);
   });
+
+  testWidgets('Switching between notes runs fold and unfold animation', (tester) async {
+    final note1 = Note(
+      id: 'note-1',
+      title: 'First Test Note',
+      content: 'Content of note 1',
+      color: NoteColor.sage,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+    final note2 = Note(
+      id: 'note-2',
+      title: 'Second Test Note',
+      content: 'Content of note 2',
+      color: NoteColor.peach,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+
+    final container = ProviderContainer(
+      overrides: [
+        activeNotesProvider.overrideWith((ref) => Stream.value([note1, note2])),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(
+          home: NotesHomePage(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Open Note 1
+    container.read(selectedNoteIdProvider.notifier).state = 'note-1';
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(container.read(selectedNoteIdProvider), 'note-1');
+
+    // Switch to Note 2 directly while Note 1 is open
+    container.read(selectedNoteIdProvider.notifier).state = 'note-2';
+    // Mid-transition pump (fold Note 1)
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    // Settle transition (unfold Note 2)
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pumpAndSettle();
+
+    expect(container.read(selectedNoteIdProvider), 'note-2');
+  });
 }
+

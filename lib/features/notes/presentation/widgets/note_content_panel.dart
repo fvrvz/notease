@@ -59,7 +59,17 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
 
   @override
   void dispose() {
-    _debounce?.cancel();
+    if (_debounce?.isActive == true && _currentNote != null) {
+      _debounce?.cancel();
+      ref.read(notesNotifierProvider.notifier).updateNote(
+        _currentNote!.copyWith(
+          title: _titleController.text,
+          content: _contentController.text,
+        ),
+      );
+    } else {
+      _debounce?.cancel();
+    }
     _titleController.dispose();
     _contentController.dispose();
     super.dispose();
