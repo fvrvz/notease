@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:notease/core/theme/app_theme.dart';
 import 'package:notease/data/repositories/note_repository.dart';
 import 'package:notease/domain/models/note.dart';
 import 'package:notease/features/notes/providers/notes_provider.dart';
 import 'dart:async';
+
+enum EditorMode { edit, split, preview }
 
 class NoteContentPanel extends ConsumerStatefulWidget {
   const NoteContentPanel({super.key, required this.noteId});
@@ -19,6 +22,7 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
   late TextEditingController _contentController;
   Timer? _debounce;
   Note? _currentNote;
+  EditorMode _editorMode = EditorMode.edit;
 
   @override
   void initState() {
@@ -55,6 +59,7 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
   }
 
   void _onChanged() {
+    setState(() {}); // Immediate update for real-time markdown preview
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 350), () {
       if (_currentNote != null) {
@@ -90,7 +95,7 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final borderColor = isDark ? AppColors.darkBorderMuted : AppColors.lightBorderMuted;
+    final borderColor = isDark ? AppColors.darkBorderDefault : AppColors.lightBorderDefault;
     final canvasColor = isDark ? AppColors.darkCanvasDefault : AppColors.lightCanvasDefault;
     final headerBg = isDark ? AppColors.darkCanvasSubtle : AppColors.lightCanvasSubtle;
     final noteColor = _currentNote != null
@@ -98,79 +103,46 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
         : (isDark ? AppColors.accent : AppColors.accentLight);
 
     return Container(
-      margin: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: canvasColor,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppTheme.radius),
         border: Border.all(color: borderColor, width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.04),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Elegant Header Bar
+          // Top Header Bar
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
               color: headerBg,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(AppTheme.radius),
+              ),
               border: Border(
                 bottom: BorderSide(color: borderColor, width: 1),
               ),
             ),
             child: Row(
               children: [
-                // Tag / Color Pill
+                // Color Label Dot
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  width: 8,
+                  height: 8,
                   decoration: BoxDecoration(
-                    color: noteColor.withValues(alpha: isDark ? 0.18 : 0.12),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: noteColor.withValues(alpha: 0.3),
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: noteColor,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        _currentNote?.color.name.toUpperCase() ?? 'NOTE',
-                        style: TextStyle(
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.6,
-                          color: noteColor,
-                        ),
-                      ),
-                    ],
+                    color: noteColor,
+                    shape: BoxShape.circle,
                   ),
                 ),
-                const SizedBox(width: 14),
-                // Note Title Input
+                const SizedBox(width: 10),
+                // Note Title Field
                 Expanded(
                   child: TextField(
                     controller: _titleController,
                     onChanged: (_) => _onChanged(),
                     style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.3,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
                       color: isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault,
                     ),
                     decoration: InputDecoration(
@@ -179,18 +151,24 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
                       enabledBorder: InputBorder.none,
                       focusedBorder: InputBorder.none,
                       contentPadding: EdgeInsets.zero,
-                      hintText: 'Title your note...',
+                      isDense: true,
+                      hintText: 'Note title...',
                       hintStyle: TextStyle(
                         color: isDark ? AppColors.darkFgSubtle : AppColors.lightFgSubtle,
-                        fontSize: 18,
+                        fontSize: 16,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
                 ),
+                const SizedBox(width: 10),
+                // Mode Toggle: Write / Split / Preview
+                _buildModeToggle(isDark, borderColor),
+                const SizedBox(width: 8),
                 _ColorPicker(
                   selected: _currentNote?.color ?? NoteColor.sage,
                   isDark: isDark,
+                  borderColor: borderColor,
                   onColorSelected: (color) {
                     if (_currentNote != null) {
                       setState(() => _currentNote = _currentNote!.copyWith(color: color));
@@ -200,14 +178,15 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
                     }
                   },
                 ),
-                const SizedBox(width: 8),
-                _ActionButton(
-                  tooltip: _currentNote?.isPinned == true ? 'Unpin note' : 'Pin note',
+                const SizedBox(width: 6),
+                _HeaderIconButton(
+                  tooltip: _currentNote?.isPinned == true ? 'Unpin' : 'Pin',
                   icon: _currentNote?.isPinned == true
                       ? Icons.push_pin_rounded
                       : Icons.push_pin_outlined,
                   active: _currentNote?.isPinned == true,
                   isDark: isDark,
+                  borderColor: borderColor,
                   onTap: () {
                     if (_currentNote != null) {
                       ref.read(notesNotifierProvider.notifier).togglePin(_currentNote!);
@@ -217,12 +196,13 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
                     }
                   },
                 ),
-                const SizedBox(width: 8),
-                _ActionButton(
-                  tooltip: 'Delete note',
+                const SizedBox(width: 6),
+                _HeaderIconButton(
+                  tooltip: 'Delete',
                   icon: Icons.delete_outline_rounded,
                   isDanger: true,
                   isDark: isDark,
+                  borderColor: borderColor,
                   onTap: () {
                     if (_currentNote != null) {
                       ref.read(notesNotifierProvider.notifier).deleteNote(_currentNote!.id);
@@ -233,97 +213,192 @@ class _NoteContentPanelState extends ConsumerState<NoteContentPanel> {
             ),
           ),
 
-          // Note Meta & Timestamp strip
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 7),
-            decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(
-                  color: isDark ? AppColors.darkBorderMuted : AppColors.lightBorderMuted,
-                  width: 1,
-                ),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.auto_awesome_rounded,
-                  size: 13,
-                  color: noteColor,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  'Auto-saved locally',
-                  style: TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w500,
-                    color: isDark ? AppColors.darkFgSubtle : AppColors.lightFgSubtle,
-                  ),
-                ),
-                const Spacer(),
-                if (_currentNote != null)
-                  Text(
-                    'Edited ${_formatDate(_currentNote!.updatedAt)}',
-                    style: TextStyle(
-                      fontSize: 11.5,
-                      color: isDark ? AppColors.darkFgSubtle : AppColors.lightFgSubtle,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-
-          // Main Note Editor Content Area
+          // Real-time Editor and/or Markdown Preview Body
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
-              child: TextField(
-                controller: _contentController,
-                onChanged: (_) => _onChanged(),
-                maxLines: null,
-                expands: true,
-                style: TextStyle(
-                  height: 1.65,
-                  fontSize: 14.5,
-                  color: isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault,
-                ),
-                decoration: InputDecoration(
-                  filled: false,
-                  border: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: InputBorder.none,
-                  contentPadding: EdgeInsets.zero,
-                  hintText: 'Start writing your thoughts, markdown, or lists...',
-                  hintStyle: TextStyle(
-                    color: isDark ? AppColors.darkFgSubtle : AppColors.lightFgSubtle,
-                    fontSize: 14,
-                    height: 1.6,
-                  ),
-                ),
-                textAlignVertical: TextAlignVertical.top,
-              ),
-            ),
+            child: _buildBodyContent(isDark, borderColor),
           ),
         ],
       ),
     );
   }
 
-  String _formatDate(DateTime dt) {
-    final now = DateTime.now();
-    final diff = now.difference(dt);
-    if (diff.inMinutes < 1) return 'just now';
-    if (diff.inHours < 1) return '${diff.inMinutes}m ago';
-    if (diff.inDays < 1) return '${diff.inHours}h ago';
-    return '${dt.day}/${dt.month}/${dt.year}';
+  Widget _buildModeToggle(bool isDark, Color borderColor) {
+    return Container(
+      height: 28,
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkCanvasInset : AppColors.lightCanvasInset,
+        borderRadius: BorderRadius.circular(AppTheme.radius),
+        border: Border.all(color: borderColor, width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _modeButton('Edit', EditorMode.edit, isDark),
+          _modeButton('Split', EditorMode.split, isDark),
+          _modeButton('Preview', EditorMode.preview, isDark),
+        ],
+      ),
+    );
+  }
+
+  Widget _modeButton(String text, EditorMode mode, bool isDark) {
+    final isSelected = _editorMode == mode;
+    final fg = isSelected
+        ? (isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault)
+        : (isDark ? AppColors.darkFgMuted : AppColors.lightFgMuted);
+    final bg = isSelected
+        ? (isDark ? AppColors.darkCanvasSubtle : AppColors.lightCanvasDefault)
+        : Colors.transparent;
+
+    return GestureDetector(
+      onTap: () => setState(() => _editorMode = mode),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(AppTheme.radius - 1),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(
+            fontSize: 11.5,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+            color: fg,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBodyContent(bool isDark, Color borderColor) {
+    final isCompact = MediaQuery.of(context).size.width < 900;
+
+    if (_editorMode == EditorMode.preview) {
+      return _buildMarkdownPreview(isDark);
+    }
+
+    if (_editorMode == EditorMode.split && !isCompact) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(child: _buildRawEditor(isDark)),
+          VerticalDivider(width: 1, thickness: 1, color: borderColor),
+          Expanded(child: _buildMarkdownPreview(isDark)),
+        ],
+      );
+    }
+
+    // Default: Full raw editor
+    return _buildRawEditor(isDark);
+  }
+
+  Widget _buildRawEditor(bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: TextField(
+        controller: _contentController,
+        onChanged: (_) => _onChanged(),
+        maxLines: null,
+        expands: true,
+        style: TextStyle(
+          height: 1.6,
+          fontSize: 13.5,
+          fontFamily: 'monospace',
+          color: isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault,
+        ),
+        decoration: InputDecoration(
+          filled: false,
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          contentPadding: EdgeInsets.zero,
+          hintText: '# Title\n\nWrite markdown here...\n- [ ] Task 1\n- [x] Task 2',
+          hintStyle: TextStyle(
+            color: isDark ? AppColors.darkFgSubtle : AppColors.lightFgSubtle,
+            fontFamily: 'monospace',
+            fontSize: 13.5,
+            height: 1.6,
+          ),
+        ),
+        textAlignVertical: TextAlignVertical.top,
+      ),
+    );
+  }
+
+  Widget _buildMarkdownPreview(bool isDark) {
+    final text = _contentController.text.trim();
+    if (text.isEmpty) {
+      return Center(
+        child: Text(
+          'Nothing to preview yet.',
+          style: TextStyle(
+            fontSize: 13,
+            color: isDark ? AppColors.darkFgSubtle : AppColors.lightFgSubtle,
+          ),
+        ),
+      );
+    }
+
+    final mdStyleSheet = MarkdownStyleSheet(
+      p: TextStyle(
+        fontSize: 13.5,
+        height: 1.5,
+        color: isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault,
+      ),
+      h1: TextStyle(
+        fontSize: 20,
+        fontWeight: FontWeight.w700,
+        color: isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault,
+      ),
+      h2: TextStyle(
+        fontSize: 17,
+        fontWeight: FontWeight.w600,
+        color: isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault,
+      ),
+      h3: TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.w600,
+        color: isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault,
+      ),
+      code: TextStyle(
+        fontSize: 12.5,
+        fontFamily: 'monospace',
+        backgroundColor: isDark ? AppColors.darkCanvasInset : AppColors.lightCanvasInset,
+        color: isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault,
+      ),
+      codeblockDecoration: BoxDecoration(
+        color: isDark ? AppColors.darkCanvasInset : AppColors.lightCanvasInset,
+        borderRadius: BorderRadius.circular(AppTheme.radius),
+        border: Border.all(
+          color: isDark ? AppColors.darkBorderDefault : AppColors.lightBorderDefault,
+        ),
+      ),
+      blockquoteDecoration: BoxDecoration(
+        border: Border(
+          left: BorderSide(
+            color: isDark ? AppColors.darkBorderDefault : AppColors.lightBorderDefault,
+            width: 3,
+          ),
+        ),
+      ),
+    );
+
+    return Markdown(
+      data: _contentController.text,
+      styleSheet: mdStyleSheet,
+      padding: const EdgeInsets.all(16),
+      selectable: true,
+    );
   }
 }
 
-class _ActionButton extends StatelessWidget {
-  const _ActionButton({
+class _HeaderIconButton extends StatelessWidget {
+  const _HeaderIconButton({
     required this.icon,
     required this.onTap,
     required this.isDark,
+    required this.borderColor,
     this.tooltip,
     this.active = false,
     this.isDanger = false,
@@ -332,15 +407,15 @@ class _ActionButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
   final bool isDark;
+  final Color borderColor;
   final String? tooltip;
   final bool active;
   final bool isDanger;
 
   @override
   Widget build(BuildContext context) {
-    final borderColor = isDark ? AppColors.darkBorderMuted : AppColors.lightBorderMuted;
     final fgColor = isDanger
-        ? const Color(0xFFF85149)
+        ? const Color(0xFFE5534B)
         : (active
             ? (isDark ? AppColors.accent : AppColors.accentLight)
             : (isDark ? AppColors.darkFgMuted : AppColors.lightFgMuted));
@@ -349,21 +424,21 @@ class _ActionButton extends StatelessWidget {
       color: active
           ? (isDark ? AppColors.accent.withValues(alpha: 0.15) : AppColors.accentLight.withValues(alpha: 0.12))
           : (isDark ? AppColors.darkCanvasInset : AppColors.lightCanvasDefault),
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(AppTheme.radius),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppTheme.radius),
         child: Container(
-          width: 32,
-          height: 32,
+          width: 28,
+          height: 28,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(AppTheme.radius),
             border: Border.all(
               color: active ? (isDark ? AppColors.accent : AppColors.accentLight) : borderColor,
               width: 1,
             ),
           ),
-          child: Icon(icon, size: 16, color: fgColor),
+          child: Icon(icon, size: 14, color: fgColor),
         ),
       ),
     );
@@ -380,11 +455,13 @@ class _ColorPicker extends StatelessWidget {
     required this.selected,
     required this.onColorSelected,
     required this.isDark,
+    required this.borderColor,
   });
 
   final NoteColor selected;
   final void Function(NoteColor) onColorSelected;
   final bool isDark;
+  final Color borderColor;
 
   @override
   Widget build(BuildContext context) {
@@ -398,30 +475,29 @@ class _ColorPicker extends StatelessWidget {
       (NoteColor.rose, 'Rose', AppColors.noteRose),
     ];
 
-    final borderColor = isDark ? AppColors.darkBorderMuted : AppColors.lightBorderMuted;
     final bgColor = isDark ? AppColors.darkCanvasInset : AppColors.lightCanvasDefault;
 
     return PopupMenuButton<NoteColor>(
       tooltip: 'Change note color',
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppTheme.radius),
         side: BorderSide(color: borderColor),
       ),
       color: isDark ? AppColors.darkCanvasSubtle : AppColors.lightCanvasDefault,
       child: Container(
-        height: 32,
-        padding: const EdgeInsets.symmetric(horizontal: 9),
+        height: 28,
+        padding: const EdgeInsets.symmetric(horizontal: 7),
         decoration: BoxDecoration(
           color: bgColor,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(AppTheme.radius),
           border: Border.all(color: borderColor),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 10,
-              height: 10,
+              width: 8,
+              height: 8,
               decoration: BoxDecoration(
                 color: colors.firstWhere((c) => c.$1 == selected).$3,
                 shape: BoxShape.circle,
@@ -429,8 +505,8 @@ class _ColorPicker extends StatelessWidget {
             ),
             const SizedBox(width: 4),
             Icon(
-              Icons.arrow_drop_down_rounded,
-              size: 16,
+              Icons.arrow_drop_down,
+              size: 14,
               color: isDark ? AppColors.darkFgMuted : AppColors.lightFgMuted,
             ),
           ],
@@ -443,18 +519,18 @@ class _ColorPicker extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'NOTE COLOR',
+                'COLOR TINT',
                 style: TextStyle(
-                  fontSize: 10.5,
+                  fontSize: 10,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.8,
                   color: isDark ? AppColors.darkFgSubtle : AppColors.lightFgSubtle,
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               Wrap(
-                spacing: 8,
-                runSpacing: 8,
+                spacing: 6,
+                runSpacing: 6,
                 children: colors.map((c) {
                   final isSelected = selected == c.$1;
                   return InkWell(
@@ -462,12 +538,12 @@ class _ColorPicker extends StatelessWidget {
                       onColorSelected(c.$1);
                       Navigator.pop(ctx);
                     },
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(AppTheme.radius),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: c.$3.withValues(alpha: isSelected ? 0.25 : 0.12),
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(AppTheme.radius),
                         border: Border.all(
                           color: isSelected ? c.$3 : c.$3.withValues(alpha: 0.3),
                           width: isSelected ? 1.5 : 1,
@@ -476,7 +552,7 @@ class _ColorPicker extends StatelessWidget {
                       child: Text(
                         c.$2,
                         style: TextStyle(
-                          fontSize: 11.5,
+                          fontSize: 11,
                           fontWeight: FontWeight.w600,
                           color: c.$3,
                         ),

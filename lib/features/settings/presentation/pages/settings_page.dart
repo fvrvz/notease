@@ -11,7 +11,7 @@ class SettingsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeProvider);
     final isDark = themeMode == ThemeMode.dark;
-    final borderColor = isDark ? AppColors.darkBorderMuted : AppColors.lightBorderMuted;
+    final borderColor = isDark ? AppColors.darkBorderDefault : AppColors.lightBorderDefault;
     final canvasColor = isDark ? AppColors.darkCanvasDefault : AppColors.lightCanvasSubtle;
     final surfaceColor = isDark ? AppColors.darkCanvasSubtle : AppColors.lightCanvasDefault;
     final fgDefault = isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault;
@@ -24,13 +24,13 @@ class SettingsPage extends ConsumerWidget {
         elevation: 0,
         scrolledUnderElevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_rounded, size: 20, color: fgMuted),
+          icon: Icon(Icons.arrow_back_rounded, size: 18, color: fgMuted),
           onPressed: () => context.pop(),
         ),
         title: Text(
           'Settings',
           style: TextStyle(
-            fontSize: 16,
+            fontSize: 15,
             fontWeight: FontWeight.w700,
             color: fgDefault,
           ),
@@ -40,130 +40,132 @@ class SettingsPage extends ConsumerWidget {
           child: Divider(height: 1, color: borderColor),
         ),
       ),
-      body: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-        children: [
-          // Appearance Section
-          _SettingsSection(
-            title: 'Appearance',
-            description: 'Customize the application theme style.',
-            borderColor: borderColor,
-            surfaceColor: surfaceColor,
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 680),
+          child: ListView(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
             children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+              _SettingsSection(
+                title: 'Appearance',
+                description: 'Customize the application theme interface.',
+                borderColor: borderColor,
+                surfaceColor: surfaceColor,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          'Interface Theme',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: fgDefault,
-                          ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Interface Theme',
+                              style: TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w600,
+                                color: fgDefault,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              isDark ? 'Dark mode enabled' : 'Light mode enabled',
+                              style: TextStyle(fontSize: 12, color: fgMuted),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          isDark ? 'Dark theme enabled' : 'Light theme enabled',
-                          style: TextStyle(fontSize: 12.5, color: fgMuted),
+                        _ThemeToggle(
+                          isDark: isDark,
+                          onToggle: () => ref.read(themeModeProvider.notifier).toggle(),
+                          borderColor: borderColor,
                         ),
                       ],
                     ),
-                    _ThemeTogglePill(
-                      isDark: isDark,
-                      onToggle: () => ref.read(themeModeProvider.notifier).toggle(),
-                      borderColor: borderColor,
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
-          ),
 
-          const SizedBox(height: 24),
+              const SizedBox(height: 18),
 
-          // Cloud Sync Section
-          _SettingsSection(
-            title: 'Storage & Cloud Sync',
-            description: 'Notes are saved locally on this device. Connect a provider to sync across platforms.',
-            borderColor: borderColor,
-            surfaceColor: surfaceColor,
-            children: [
-              _SyncProviderItem(
-                icon: Icons.add_to_drive_rounded,
-                name: 'Google Drive',
-                desc: 'Sync notes to your personal Google Drive app folder',
-                isDark: isDark,
+              _SettingsSection(
+                title: 'Storage & Cloud Sync',
+                description: 'Notes are saved locally on this machine. Connect a provider to sync.',
                 borderColor: borderColor,
+                surfaceColor: surfaceColor,
+                children: [
+                  _SyncProviderRow(
+                    icon: Icons.add_to_drive_rounded,
+                    name: 'Google Drive',
+                    desc: 'Sync notes to personal Google Drive app folder',
+                    isDark: isDark,
+                    borderColor: borderColor,
+                  ),
+                  Divider(height: 1, color: borderColor),
+                  _SyncProviderRow(
+                    icon: Icons.cloud_done_rounded,
+                    name: 'Apple iCloud',
+                    desc: 'iCloud Drive file sync for Apple devices',
+                    isDark: isDark,
+                    borderColor: borderColor,
+                  ),
+                  Divider(height: 1, color: borderColor),
+                  _SyncProviderRow(
+                    icon: Icons.window_rounded,
+                    name: 'Microsoft OneDrive',
+                    desc: 'Synchronize notes with OneDrive personal/work',
+                    isDark: isDark,
+                    borderColor: borderColor,
+                  ),
+                  Divider(height: 1, color: borderColor),
+                  _SyncProviderRow(
+                    icon: Icons.cloud_queue_rounded,
+                    name: 'Dropbox',
+                    desc: 'Save and synchronize markdown files in Dropbox',
+                    isDark: isDark,
+                    borderColor: borderColor,
+                  ),
+                ],
               ),
-              Divider(height: 1, color: borderColor),
-              _SyncProviderItem(
-                icon: Icons.cloud_done_rounded,
-                name: 'Apple iCloud',
-                desc: 'Native iCloud Drive synchronization for Apple devices',
-                isDark: isDark,
-                borderColor: borderColor,
-              ),
-              Divider(height: 1, color: borderColor),
-              _SyncProviderItem(
-                icon: Icons.window_rounded,
-                name: 'Microsoft OneDrive',
-                desc: 'Keep notes synchronized with OneDrive cloud',
-                isDark: isDark,
-                borderColor: borderColor,
-              ),
-              Divider(height: 1, color: borderColor),
-              _SyncProviderItem(
-                icon: Icons.cloud_queue_rounded,
-                name: 'Dropbox',
-                desc: 'Save and synchronize markdown files in Dropbox',
-                isDark: isDark,
-                borderColor: borderColor,
-              ),
-            ],
-          ),
 
-          const SizedBox(height: 24),
+              const SizedBox(height: 18),
 
-          // About Section
-          _SettingsSection(
-            title: 'About NoteEase',
-            description: 'Minimal, cross-platform notes application.',
-            borderColor: borderColor,
-            surfaceColor: surfaceColor,
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Version', style: TextStyle(fontSize: 13.5, color: fgDefault)),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: isDark ? AppColors.darkCanvasInset : AppColors.lightCanvasInset,
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: borderColor),
-                      ),
-                      child: Text(
-                        '1.0.0',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: fgMuted,
+              _SettingsSection(
+                title: 'About NoteEase',
+                description: 'Minimal, cross-platform notes application.',
+                borderColor: borderColor,
+                surfaceColor: surfaceColor,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Version', style: TextStyle(fontSize: 13, color: fgDefault)),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: isDark ? AppColors.darkCanvasInset : AppColors.lightCanvasInset,
+                            borderRadius: BorderRadius.circular(AppTheme.radius),
+                            border: Border.all(color: borderColor),
+                          ),
+                          child: Text(
+                            '1.0.0',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
+                              color: fgMuted,
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -196,24 +198,24 @@ class _SettingsSection extends StatelessWidget {
         Text(
           title,
           style: TextStyle(
-            fontSize: 14.5,
+            fontSize: 14,
             fontWeight: FontWeight.w700,
             color: fgDefault,
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 3),
         Text(
           description,
           style: TextStyle(
-            fontSize: 12.5,
+            fontSize: 12,
             color: fgMuted,
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
             color: surfaceColor,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(AppTheme.radius),
             border: Border.all(color: borderColor, width: 1),
           ),
           child: Column(children: children),
@@ -223,8 +225,8 @@ class _SettingsSection extends StatelessWidget {
   }
 }
 
-class _ThemeTogglePill extends StatelessWidget {
-  const _ThemeTogglePill({
+class _ThemeToggle extends StatelessWidget {
+  const _ThemeToggle({
     required this.isDark,
     required this.onToggle,
     required this.borderColor,
@@ -238,14 +240,14 @@ class _ThemeTogglePill extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: isDark ? AppColors.darkCanvasInset : AppColors.lightCanvasInset,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(AppTheme.radius),
       child: InkWell(
         onTap: onToggle,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(AppTheme.radius),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(AppTheme.radius),
             border: Border.all(color: borderColor),
           ),
           child: Row(
@@ -253,14 +255,14 @@ class _ThemeTogglePill extends StatelessWidget {
             children: [
               Icon(
                 isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
-                size: 15,
+                size: 14,
                 color: isDark ? AppColors.accent : AppColors.accentLight,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
               Text(
-                isDark ? 'Dark Mode' : 'Light Mode',
+                isDark ? 'Dark' : 'Light',
                 style: TextStyle(
-                  fontSize: 12.5,
+                  fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault,
                 ),
@@ -273,8 +275,8 @@ class _ThemeTogglePill extends StatelessWidget {
   }
 }
 
-class _SyncProviderItem extends StatelessWidget {
-  const _SyncProviderItem({
+class _SyncProviderRow extends StatelessWidget {
+  const _SyncProviderRow({
     required this.icon,
     required this.name,
     required this.desc,
@@ -295,19 +297,11 @@ class _SyncProviderItem extends StatelessWidget {
     final accent = isDark ? AppColors.accent : AppColors.accentLight;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       child: Row(
         children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: accent.withValues(alpha: isDark ? 0.15 : 0.08),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, size: 18, color: accent),
-          ),
-          const SizedBox(width: 14),
+          Icon(icon, size: 18, color: accent),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -315,36 +309,35 @@ class _SyncProviderItem extends StatelessWidget {
                 Text(
                   name,
                   style: TextStyle(
-                    fontSize: 13.5,
+                    fontSize: 13,
                     fontWeight: FontWeight.w600,
                     color: fgDefault,
                   ),
                 ),
-                const SizedBox(height: 2),
                 Text(
                   desc,
-                  style: TextStyle(fontSize: 12, color: fgMuted),
+                  style: TextStyle(fontSize: 11.5, color: fgMuted),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Material(
             color: isDark ? AppColors.darkCanvasInset : AppColors.lightCanvasInset,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(AppTheme.radius),
             child: InkWell(
               onTap: () {},
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(AppTheme.radius),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(AppTheme.radius),
                   border: Border.all(color: borderColor),
                 ),
                 child: Text(
                   'Connect',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 11.5,
                     fontWeight: FontWeight.w600,
                     color: accent,
                   ),

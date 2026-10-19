@@ -8,7 +8,7 @@ class WelcomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final borderColor = isDark ? AppColors.darkBorderMuted : AppColors.lightBorderMuted;
+    final borderColor = isDark ? AppColors.darkBorderDefault : AppColors.lightBorderDefault;
     final surfaceColor = isDark ? AppColors.darkCanvasSubtle : AppColors.lightCanvasDefault;
     final canvasColor = isDark ? AppColors.darkCanvasDefault : AppColors.lightCanvasSubtle;
     final fgDefault = isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault;
@@ -20,75 +20,53 @@ class WelcomePage extends StatelessWidget {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(28),
+            padding: const EdgeInsets.all(20),
             child: Container(
-              constraints: const BoxConstraints(maxWidth: 400),
+              constraints: const BoxConstraints(maxWidth: 360),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Gradient Note App Icon
                   Container(
-                    width: 58,
-                    height: 58,
+                    width: 44,
+                    height: 44,
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: isDark
-                            ? [const Color(0xFF2F81F7), const Color(0xFF8957E5)]
-                            : [const Color(0xFF0969DA), const Color(0xFF8250DF)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: (isDark ? const Color(0xFF2F81F7) : const Color(0xFF0969DA))
-                              .withValues(alpha: 0.35),
-                          blurRadius: 14,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
+                      color: accent,
+                      borderRadius: BorderRadius.circular(AppTheme.radius),
                     ),
                     child: const Icon(
                       Icons.edit_note_rounded,
-                      size: 32,
+                      size: 26,
                       color: Colors.white,
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
                   Text(
                     'Welcome to NoteEase',
                     style: TextStyle(
-                      fontSize: 24,
+                      fontSize: 20,
                       fontWeight: FontWeight.w700,
-                      letterSpacing: -0.5,
+                      letterSpacing: -0.3,
                       color: fgDefault,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   Text(
-                    'Minimal notes with multi-provider cloud sync.',
+                    'Minimal notes with cloud sync options.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 13,
                       color: fgMuted,
                     ),
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 20),
 
-                  // Authentication card
+                  // Auth Card
                   Container(
-                    padding: const EdgeInsets.all(24),
+                    padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
                       color: surfaceColor,
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(AppTheme.radius),
                       border: Border.all(color: borderColor, width: 1),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
-                          blurRadius: 16,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -101,7 +79,7 @@ class WelcomePage extends StatelessWidget {
                           borderColor: borderColor,
                           onTap: () => context.go('/'),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 10),
                         _ProviderSignInButton(
                           label: 'Continue with Apple',
                           icon: Icons.apple_rounded,
@@ -110,7 +88,7 @@ class WelcomePage extends StatelessWidget {
                           borderColor: borderColor,
                           onTap: () => context.go('/'),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 10),
                         _ProviderSignInButton(
                           label: 'Continue with Microsoft',
                           icon: Icons.window_rounded,
@@ -119,50 +97,43 @@ class WelcomePage extends StatelessWidget {
                           borderColor: borderColor,
                           onTap: () => context.go('/'),
                         ),
-                        const SizedBox(height: 18),
+                        const SizedBox(height: 14),
                         Row(
                           children: [
                             Expanded(child: Divider(color: borderColor, height: 1)),
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              padding: const EdgeInsets.symmetric(horizontal: 10),
                               child: Text(
                                 'or',
-                                style: TextStyle(fontSize: 12, color: fgMuted),
+                                style: TextStyle(fontSize: 11.5, color: fgMuted),
                               ),
                             ),
                             Expanded(child: Divider(color: borderColor, height: 1)),
                           ],
                         ),
-                        const SizedBox(height: 18),
-                        // Primary Accent Action: Continue as Guest
+                        const SizedBox(height: 14),
+                        // Primary Action: Guest Mode
                         Material(
                           color: accent,
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(AppTheme.radius),
                           child: InkWell(
                             onTap: () => context.go('/'),
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(AppTheme.radius),
                             child: Container(
-                              height: 44,
+                              height: 38,
                               alignment: Alignment.center,
                               decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(10),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: accent.withValues(alpha: 0.35),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
+                                borderRadius: BorderRadius.circular(AppTheme.radius),
                               ),
                               child: const Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.person_outline_rounded, size: 18, color: Colors.white),
+                                  Icon(Icons.person_outline_rounded, size: 16, color: Colors.white),
                                   SizedBox(width: 8),
                                   Text(
                                     'Continue as Guest',
                                     style: TextStyle(
-                                      fontSize: 14,
+                                      fontSize: 13,
                                       fontWeight: FontWeight.w600,
                                       color: Colors.white,
                                     ),
@@ -176,10 +147,10 @@ class WelcomePage extends StatelessWidget {
                     ),
                   ),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
                   Text(
-                    'No login required. Local offline storage by default.',
-                    style: TextStyle(fontSize: 12, color: fgMuted),
+                    'No account needed. Local storage by default.',
+                    style: TextStyle(fontSize: 11.5, color: fgMuted),
                   ),
                 ],
               ),
@@ -215,26 +186,26 @@ class _ProviderSignInButton extends StatelessWidget {
 
     return Material(
       color: bgColor,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(AppTheme.radius),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(AppTheme.radius),
         child: Container(
-          height: 42,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
+          height: 38,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(AppTheme.radius),
             border: Border.all(color: borderColor, width: 1),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 20, color: color),
-              const SizedBox(width: 10),
+              Icon(icon, size: 18, color: color),
+              const SizedBox(width: 8),
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: 13.5,
+                  fontSize: 13,
                   fontWeight: FontWeight.w500,
                   color: fgDefault,
                 ),

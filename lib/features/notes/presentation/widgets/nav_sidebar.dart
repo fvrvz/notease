@@ -11,7 +11,7 @@ class NavSidebar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final borderColor = isDark ? AppColors.darkBorderMuted : AppColors.lightBorderMuted;
+    final borderColor = isDark ? AppColors.darkBorderDefault : AppColors.lightBorderDefault;
     final surfaceColor = isDark ? AppColors.darkCanvasSubtle : AppColors.lightCanvasSubtle;
     final fgDefault = isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault;
     final fgMuted = isDark ? AppColors.darkFgMuted : AppColors.lightFgMuted;
@@ -30,10 +30,10 @@ class NavSidebar extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(height: MediaQuery.of(context).padding.top + 16),
-          // App Logo & Brand Header
+          SizedBox(height: MediaQuery.of(context).padding.top + 10),
+          // App Header
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 10),
             child: Row(
               mainAxisAlignment: isExpanded
                   ? MainAxisAlignment.spaceBetween
@@ -42,41 +42,25 @@ class NavSidebar extends ConsumerWidget {
                 if (isExpanded)
                   Row(
                     children: [
-                      // Sleek custom gradient app icon badge
                       Container(
-                        width: 28,
-                        height: 28,
+                        width: 24,
+                        height: 24,
                         decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: isDark
-                                ? [const Color(0xFF2F81F7), const Color(0xFF8957E5)]
-                                : [const Color(0xFF0969DA), const Color(0xFF8250DF)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(8),
-                          boxShadow: [
-                            BoxShadow(
-                              color: (isDark ? const Color(0xFF2F81F7) : const Color(0xFF0969DA))
-                                  .withValues(alpha: 0.3),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
+                          color: isDark ? AppColors.accent : AppColors.accentLight,
+                          borderRadius: BorderRadius.circular(AppTheme.radius),
                         ),
                         child: const Icon(
                           Icons.edit_note_rounded,
-                          size: 18,
+                          size: 16,
                           color: Colors.white,
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 8),
                       Text(
                         'NoteEase',
                         style: TextStyle(
-                          fontSize: 15,
+                          fontSize: 14,
                           fontWeight: FontWeight.w700,
-                          letterSpacing: -0.3,
                           color: fgDefault,
                         ),
                       ),
@@ -91,18 +75,18 @@ class NavSidebar extends ConsumerWidget {
               ],
             ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 12),
           Divider(color: borderColor, height: 1),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
 
           // Workspace Section
           if (isExpanded)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
               child: Text(
                 'WORKSPACE',
                 style: TextStyle(
-                  fontSize: 10.5,
+                  fontSize: 10,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.8,
                   color: fgMuted,
@@ -134,7 +118,7 @@ class NavSidebar extends ConsumerWidget {
 
           const Spacer(),
           Divider(color: borderColor, height: 1),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           _NavItem(
             icon: Icons.settings_outlined,
             label: 'Settings',
@@ -142,7 +126,7 @@ class NavSidebar extends ConsumerWidget {
             isDark: isDark,
             onTap: () => context.push('/settings'),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
         ],
       ),
     );
@@ -168,18 +152,18 @@ class _SidebarToggleButton extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onToggle,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppTheme.radius),
         child: Container(
-          width: 30,
-          height: 30,
+          width: 26,
+          height: 26,
           decoration: BoxDecoration(
             color: isDark ? AppColors.darkCanvasInset : AppColors.lightCanvasDefault,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(AppTheme.radius),
             border: Border.all(color: borderColor, width: 1),
           ),
           child: Icon(
             isExpanded ? Icons.keyboard_double_arrow_left_rounded : Icons.keyboard_double_arrow_right_rounded,
-            size: 16,
+            size: 14,
             color: isDark ? AppColors.darkFgMuted : AppColors.lightFgMuted,
           ),
         ),
@@ -216,18 +200,18 @@ class _NavItem extends StatelessWidget {
     final accent = isDark ? AppColors.accent : AppColors.accentLight;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       child: Material(
         color: isSelected ? activeBg : Colors.transparent,
-        borderRadius: BorderRadius.circular(9),
+        borderRadius: BorderRadius.circular(AppTheme.radius),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(9),
+          borderRadius: BorderRadius.circular(AppTheme.radius),
           child: Container(
-            height: 38,
+            height: 34,
             padding: const EdgeInsets.symmetric(horizontal: 10),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(9),
+              borderRadius: BorderRadius.circular(AppTheme.radius),
               border: isSelected
                   ? Border.all(
                       color: isDark ? AppColors.darkBorderDefault : AppColors.lightBorderDefault,
@@ -242,11 +226,11 @@ class _NavItem extends StatelessWidget {
               children: [
                 Icon(
                   icon,
-                  size: 17,
+                  size: 16,
                   color: isSelected ? accent : fgColor,
                 ),
                 if (isExpanded) ...[
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       label,

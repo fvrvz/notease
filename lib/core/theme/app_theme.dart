@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Refined modern palette using GitHub Primer's sophisticated canvas, surface, and text colors.
+/// Clean, flat palette using GitHub Primer's canvas, surface, and text colors.
+/// No shadows, no gradients.
 class AppColors {
-  // Dark Canvas & Surfaces (Subtle contrast, elegant depth)
+  // Dark Canvas & Surfaces
   static const darkCanvasDefault = Color(0xFF0D1117);
   static const darkCanvasSubtle = Color(0xFF161B22);
-  static const darkCanvasInset = Color(0xFF090D12);
+  static const darkCanvasInset = Color(0xFF010409);
   static const darkBorderDefault = Color(0xFF30363D);
   static const darkBorderMuted = Color(0xFF21262D);
   static const darkFgDefault = Color(0xFFE6EDF3);
@@ -16,14 +17,14 @@ class AppColors {
   // Light Canvas & Surfaces
   static const lightCanvasDefault = Color(0xFFFFFFFF);
   static const lightCanvasSubtle = Color(0xFFF6F8FA);
-  static const lightCanvasInset = Color(0xFFEEF1F5);
+  static const lightCanvasInset = Color(0xFFF0F2F5);
   static const lightBorderDefault = Color(0xFFD0D7DE);
   static const lightBorderMuted = Color(0xFFE1E4E8);
   static const lightFgDefault = Color(0xFF1F2328);
   static const lightFgMuted = Color(0xFF656D76);
   static const lightFgSubtle = Color(0xFF8C959F);
 
-  // Primary brand accent (Clean electric blue with smooth tint)
+  // Primary brand accent
   static const accent = Color(0xFF2F81F7);
   static const accentLight = Color(0xFF0969DA);
 
@@ -48,9 +49,10 @@ class AppColors {
 }
 
 class AppTheme {
-  static const double cardRadius = 14.0;
-  static const double buttonRadius = 10.0;
-  static const double pillRadius = 20.0;
+  // Decreased, tight border radius across the entire app
+  static const double radius = 6.0;
+  static const double buttonRadius = 6.0;
+  static const double pillRadius = 14.0;
 
   static ThemeData get darkTheme {
     final textTheme = _buildTextTheme(
@@ -75,19 +77,19 @@ class AppTheme {
         color: AppColors.darkCanvasSubtle,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(cardRadius),
-          side: const BorderSide(color: AppColors.darkBorderMuted, width: 1),
+          borderRadius: BorderRadius.circular(radius),
+          side: const BorderSide(color: AppColors.darkBorderDefault, width: 1),
         ),
       ),
-      dividerColor: AppColors.darkBorderMuted,
+      dividerColor: AppColors.darkBorderDefault,
       dividerTheme: const DividerThemeData(
-        color: AppColors.darkBorderMuted,
+        color: AppColors.darkBorderDefault,
         thickness: 1,
         space: 1,
       ),
       iconTheme: const IconThemeData(
         color: AppColors.darkFgMuted,
-        size: 18,
+        size: 16,
       ),
     );
   }
@@ -115,19 +117,19 @@ class AppTheme {
         color: AppColors.lightCanvasDefault,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(cardRadius),
+          borderRadius: BorderRadius.circular(radius),
           side: const BorderSide(color: AppColors.lightBorderDefault, width: 1),
         ),
       ),
-      dividerColor: AppColors.lightBorderMuted,
+      dividerColor: AppColors.lightBorderDefault,
       dividerTheme: const DividerThemeData(
-        color: AppColors.lightBorderMuted,
+        color: AppColors.lightBorderDefault,
         thickness: 1,
         space: 1,
       ),
       iconTheme: const IconThemeData(
         color: AppColors.lightFgMuted,
-        size: 18,
+        size: 16,
       ),
     );
   }
@@ -138,17 +140,17 @@ class AppTheme {
       displayLarge: base.displayLarge?.copyWith(
         color: primary,
         fontWeight: FontWeight.w700,
-        letterSpacing: -0.8,
+        letterSpacing: -0.5,
       ),
       displayMedium: base.displayMedium?.copyWith(
         color: primary,
         fontWeight: FontWeight.w700,
-        letterSpacing: -0.6,
+        letterSpacing: -0.4,
       ),
       headlineLarge: base.headlineLarge?.copyWith(
         color: primary,
         fontWeight: FontWeight.w600,
-        letterSpacing: -0.4,
+        letterSpacing: -0.3,
       ),
       headlineMedium: base.headlineMedium?.copyWith(
         color: primary,
@@ -158,12 +160,12 @@ class AppTheme {
       titleLarge: base.titleLarge?.copyWith(
         color: primary,
         fontWeight: FontWeight.w600,
-        fontSize: 18,
+        fontSize: 16,
       ),
       titleMedium: base.titleMedium?.copyWith(
         color: primary,
         fontWeight: FontWeight.w600,
-        fontSize: 15,
+        fontSize: 14,
       ),
       titleSmall: base.titleSmall?.copyWith(
         color: primary,
@@ -172,13 +174,13 @@ class AppTheme {
       ),
       bodyLarge: base.bodyLarge?.copyWith(
         color: primary,
-        fontSize: 15,
-        height: 1.6,
+        fontSize: 14,
+        height: 1.5,
       ),
       bodyMedium: base.bodyMedium?.copyWith(
         color: primary,
-        fontSize: 13.5,
-        height: 1.5,
+        fontSize: 13,
+        height: 1.45,
       ),
       bodySmall: base.bodySmall?.copyWith(
         color: muted,

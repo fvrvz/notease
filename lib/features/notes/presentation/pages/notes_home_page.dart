@@ -15,8 +15,7 @@ class NotesHomePage extends ConsumerStatefulWidget {
   ConsumerState<NotesHomePage> createState() => _NotesHomePageState();
 }
 
-class _NotesHomePageState extends ConsumerState<NotesHomePage>
-    with TickerProviderStateMixin {
+class _NotesHomePageState extends ConsumerState<NotesHomePage> {
   bool _navExpanded = true;
   final TextEditingController _searchController = TextEditingController();
 
@@ -30,19 +29,17 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage>
   Widget build(BuildContext context) {
     final notesAsync = ref.watch(filteredNotesProvider);
     final selectedId = ref.watch(selectedNoteIdProvider);
-    final size = MediaQuery.sizeOf(context);
-    final isMobile = size.width < 768;
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isMobile = screenWidth < 768;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final borderColor = isDark ? AppColors.darkBorderMuted : AppColors.lightBorderMuted;
+    final borderColor = isDark ? AppColors.darkBorderDefault : AppColors.lightBorderDefault;
     final headerBg = isDark ? AppColors.darkCanvasSubtle : AppColors.lightCanvasDefault;
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkCanvasDefault : AppColors.lightCanvasSubtle,
       body: Column(
         children: [
-          // Elegant minimal top bar
-          _buildAppTopBar(context, isDark, borderColor, headerBg),
-          // Main Body with Sidebar + Accordion Strips + Active Note Editor
+          _buildAppTopBar(context, isDark, borderColor, headerBg, isMobile, selectedId),
           Expanded(
             child: notesAsync.when(
               loading: () => Center(
@@ -54,9 +51,9 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage>
               error: (e, _) => Center(child: Text('Error: $e')),
               data: (notes) {
                 if (isMobile) {
-                  return _buildMobileLayout(notes, selectedId, isDark, borderColor);
+                  return _buildMobileResponsiveLayout(notes, selectedId, isDark, borderColor);
                 }
-                return _buildDesktopLayout(notes, selectedId, isDark, borderColor);
+                return _buildDesktopLayout(notes, selectedId, isDark, borderColor, screenWidth);
               },
             ),
           ),
@@ -70,17 +67,19 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage>
     bool isDark,
     Color borderColor,
     Color headerBg,
+    bool isMobile,
+    String? selectedId,
   ) {
     final fgDefault = isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault;
     final fgMuted = isDark ? AppColors.darkFgMuted : AppColors.lightFgMuted;
     final accent = isDark ? AppColors.accent : AppColors.accentLight;
 
     return Container(
-      height: 52 + MediaQuery.of(context).padding.top,
+      height: 48 + MediaQuery.of(context).padding.top,
       padding: EdgeInsets.only(
         top: MediaQuery.of(context).padding.top,
-        left: 20,
-        right: 20,
+        left: 14,
+        right: 14,
       ),
       decoration: BoxDecoration(
         color: headerBg,
@@ -88,14 +87,25 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage>
       ),
       child: Row(
         children: [
-          // Search Box with smooth rounded corners
+          // If on mobile and a note is selected, show back button to notes list
+          if (isMobile && selectedId != null) ...[
+            IconButton(
+              icon: Icon(Icons.arrow_back_rounded, size: 20, color: fgDefault),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              onPressed: () => ref.read(selectedNoteIdProvider.notifier).state = null,
+            ),
+            const SizedBox(width: 12),
+          ],
+
+          // Search Field
           Expanded(
             child: Container(
-              height: 34,
-              constraints: const BoxConstraints(maxWidth: 380),
+              height: 32,
+              constraints: const BoxConstraints(maxWidth: 420),
               decoration: BoxDecoration(
                 color: isDark ? AppColors.darkCanvasInset : AppColors.lightCanvasInset,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(AppTheme.radius),
                 border: Border.all(color: borderColor, width: 1),
               ),
               child: TextField(
@@ -104,18 +114,19 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage>
                 style: TextStyle(fontSize: 13, color: fgDefault),
                 decoration: InputDecoration(
                   filled: false,
-                  hintText: 'Search notes by title or content...',
+                  hintText: 'Search notes...',
                   hintStyle: TextStyle(
                     fontSize: 13,
                     color: isDark ? AppColors.darkFgSubtle : AppColors.lightFgSubtle,
                   ),
                   prefixIcon: Icon(
                     Icons.search_rounded,
-                    size: 16,
+                    size: 15,
                     color: fgMuted,
                   ),
-                  prefixIconConstraints: const BoxConstraints(minWidth: 32),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                  prefixIconConstraints: const BoxConstraints(minWidth: 30),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 6),
+                  isDense: true,
                   border: InputBorder.none,
                   enabledBorder: InputBorder.none,
                   focusedBorder: InputBorder.none,
@@ -124,36 +135,29 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage>
             ),
           ),
 
-          const SizedBox(width: 16),
+          const SizedBox(width: 12),
 
-          // New Note Button with clean modern styling
+          // New Note Button (Flat, no shadows)
           Material(
             color: accent,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(AppTheme.radius),
             child: InkWell(
               onTap: () => ref.read(notesNotifierProvider.notifier).createNote(),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(AppTheme.radius),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
-                  boxShadow: [
-                    BoxShadow(
-                      color: accent.withValues(alpha: 0.35),
-                      blurRadius: 10,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
+                  borderRadius: BorderRadius.circular(AppTheme.radius),
                 ),
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.add_rounded, size: 16, color: Colors.white),
-                    SizedBox(width: 6),
+                    SizedBox(width: 4),
                     Text(
                       'New Note',
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: 12.5,
                         fontWeight: FontWeight.w600,
                         color: Colors.white,
                       ),
@@ -173,6 +177,7 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage>
     String? selectedId,
     bool isDark,
     Color borderColor,
+    double screenWidth,
   ) {
     final selectedIndex = notes.indexWhere((n) => n.id == selectedId);
     final leftNotes = selectedIndex > 0 ? notes.sublist(0, selectedIndex) : <Note>[];
@@ -181,19 +186,20 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage>
         : (selectedIndex < 0 ? notes : <Note>[]);
 
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Collapsible sidebar
+        // Sidebar (fixed or toggled width)
         AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
+          duration: const Duration(milliseconds: 180),
           curve: Curves.easeOutCubic,
-          width: _navExpanded ? 220 : 60,
+          width: _navExpanded ? 200 : 52,
           child: NavSidebar(
             isExpanded: _navExpanded,
             onToggle: () => setState(() => _navExpanded = !_navExpanded),
           ),
         ),
 
-        // Left accordion strips (collapsed notes)
+        // Left accordion strips (horizontally scrollable if many notes)
         if (leftNotes.isNotEmpty)
           NoteAccordionStrip(
             notes: leftNotes,
@@ -203,17 +209,28 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage>
             },
           ),
 
-        // Center: active note panel or empty state
+        // Active Note Panel with min/max width constraints
         Expanded(
-          child: selectedId != null && notes.any((n) => n.id == selectedId)
-              ? NoteContentPanel(
-                  noteId: selectedId,
-                  key: ValueKey(selectedId),
-                )
-              : const EmptyState(),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                minWidth: 380,
+                maxWidth: 960,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(10),
+                child: selectedId != null && notes.any((n) => n.id == selectedId)
+                    ? NoteContentPanel(
+                        noteId: selectedId,
+                        key: ValueKey(selectedId),
+                      )
+                    : const EmptyState(),
+              ),
+            ),
+          ),
         ),
 
-        // Right accordion strips (collapsed notes)
+        // Right accordion strips (horizontally scrollable if many notes)
         if (rightNotes.isNotEmpty)
           NoteAccordionStrip(
             notes: rightNotes,
@@ -226,17 +243,27 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage>
     );
   }
 
-  Widget _buildMobileLayout(
+  Widget _buildMobileResponsiveLayout(
     List<Note> notes,
     String? selectedId,
     bool isDark,
     Color borderColor,
   ) {
+    // If a note is tapped on mobile, fill view with the full active editor
     if (selectedId != null && notes.any((n) => n.id == selectedId)) {
-      return NoteContentPanel(noteId: selectedId, key: ValueKey(selectedId));
+      return Padding(
+        padding: const EdgeInsets.all(8),
+        child: NoteContentPanel(noteId: selectedId, key: ValueKey(selectedId)),
+      );
     }
+
+    // Otherwise, shift vertically to full responsive scrollable note cards list
+    if (notes.isEmpty) {
+      return const EmptyState();
+    }
+
     return ListView.builder(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       itemCount: notes.length,
       itemBuilder: (ctx, i) {
         final note = notes[i];
@@ -290,28 +317,28 @@ class _MobileNoteCard extends StatelessWidget {
     final color = _noteColor(note.color);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkCanvasSubtle : AppColors.lightCanvasDefault,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppTheme.radius),
         border: Border.all(color: borderColor, width: 1),
       ),
       child: ListTile(
         onTap: onTap,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
         title: Row(
           children: [
             Container(
-              width: 9,
-              height: 9,
+              width: 8,
+              height: 8,
               decoration: BoxDecoration(color: color, shape: BoxShape.circle),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
             Expanded(
               child: Text(
                 note.title.isEmpty ? 'Untitled note' : note.title,
                 style: TextStyle(
-                  fontSize: 14.5,
+                  fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: fgDefault,
                 ),
@@ -322,14 +349,14 @@ class _MobileNoteCard extends StatelessWidget {
             if (note.isPinned)
               Icon(
                 Icons.push_pin_rounded,
-                size: 15,
+                size: 14,
                 color: isDark ? AppColors.accent : AppColors.accentLight,
               ),
           ],
         ),
         subtitle: note.content.isNotEmpty
             ? Padding(
-                padding: const EdgeInsets.only(top: 6),
+                padding: const EdgeInsets.only(top: 4),
                 child: Text(
                   note.content,
                   style: TextStyle(
