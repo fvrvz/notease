@@ -12,6 +12,18 @@ on:
         description: 'Release tag to attach binaries to (e.g. v1.0.0)'
         required: true
         default: 'v1.0.0'
+      target:
+        description: 'Target platform to build'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - android
+          - macos
+          - windows
+          - linux
+          - web
 
 permissions:
   contents: write
@@ -25,33 +37,52 @@ concurrency:
 jobs:
   build-android:
     name: Build Android APK
+    if: ${{ inputs.target == null || inputs.target == 'all' || inputs.target == 'android' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Check if Android asset already exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG_NAME="${{ inputs.tag || github.event.release.tag_name || github.ref_name }}"
+          if gh release view "$TAG_NAME" --json assets -q '.assets[].name' | grep -q "^NoteEase-Android.apk$"; then
+            echo "ASSET_EXISTS=true" >> $GITHUB_ENV
+            echo "NoteEase-Android.apk already exists on release $TAG_NAME. Skipping build."
+          else
+            echo "ASSET_EXISTS=false" >> $GITHUB_ENV
+          fi
+
       - name: Set up Java
+        if: env.ASSET_EXISTS != 'true'
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
       - name: Set up Flutter
+        if: env.ASSET_EXISTS != 'true'
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
           cache: true
 
       - name: Install Dependencies
+        if: env.ASSET_EXISTS != 'true'
         run: flutter pub get
 
       - name: Build Android APK
+        if: env.ASSET_EXISTS != 'true'
         run: flutter build apk --release
 
       - name: Prepare APK Asset
+        if: env.ASSET_EXISTS != 'true'
         run: cp build/app/outputs/flutter-apk/app-release.apk NoteEase-Android.apk
 
       - name: Upload to Release
+        if: env.ASSET_EXISTS != 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -61,30 +92,48 @@ jobs:
 
   build-macos:
     name: Build macOS App
+    if: ${{ inputs.target == null || inputs.target == 'all' || inputs.target == 'macos' }}
     runs-on: macos-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Check if macOS asset already exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG_NAME="${{ inputs.tag || github.event.release.tag_name || github.ref_name }}"
+          if gh release view "$TAG_NAME" --json assets -q '.assets[].name' | grep -q "^NoteEase-macOS.zip$"; then
+            echo "ASSET_EXISTS=true" >> $GITHUB_ENV
+            echo "NoteEase-macOS.zip already exists on release $TAG_NAME. Skipping build."
+          else
+            echo "ASSET_EXISTS=false" >> $GITHUB_ENV
+          fi
+
       - name: Set up Flutter
+        if: env.ASSET_EXISTS != 'true'
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
           cache: true
 
       - name: Install Dependencies
+        if: env.ASSET_EXISTS != 'true'
         run: flutter pub get
 
       - name: Build macOS Application
+        if: env.ASSET_EXISTS != 'true'
         run: flutter build macos --release
 
       - name: Package macOS App into Zip
+        if: env.ASSET_EXISTS != 'true'
         run: |
           cd build/macos/Build/Products/Release
           ditto -c -k --sequesterRsrc --keepParent notease.app NoteEase-macOS.zip
           mv NoteEase-macOS.zip ${{ github.workspace }}/NoteEase-macOS.zip
 
       - name: Upload to Release
+        if: env.ASSET_EXISTS != 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -94,29 +143,48 @@ jobs:
 
   build-windows:
     name: Build Windows App
+    if: ${{ inputs.target == null || inputs.target == 'all' || inputs.target == 'windows' }}
     runs-on: windows-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Check if Windows asset already exists
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG_NAME="${{ inputs.tag || github.event.release.tag_name || github.ref_name }}"
+          if gh release view "$TAG_NAME" --json assets -q '.assets[].name' | grep -q "^NoteEase-Windows-x64.zip$"; then
+            echo "ASSET_EXISTS=true" >> $GITHUB_ENV
+            echo "NoteEase-Windows-x64.zip already exists on release $TAG_NAME. Skipping build."
+          else
+            echo "ASSET_EXISTS=false" >> $GITHUB_ENV
+          fi
+
       - name: Set up Flutter
+        if: env.ASSET_EXISTS != 'true'
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
           cache: true
 
       - name: Install Dependencies
+        if: env.ASSET_EXISTS != 'true'
         run: flutter pub get
 
       - name: Build Windows Application
+        if: env.ASSET_EXISTS != 'true'
         run: flutter build windows --release
 
       - name: Package Windows Bundle into Zip
+        if: env.ASSET_EXISTS != 'true'
         shell: pwsh
         run: |
           Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath NoteEase-Windows-x64.zip
 
       - name: Upload to Release
+        if: env.ASSET_EXISTS != 'true'
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -127,36 +195,56 @@ jobs:
 
   build-linux:
     name: Build Linux App
+    if: ${{ inputs.target == null || inputs.target == 'all' || inputs.target == 'linux' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Check if Linux asset already exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG_NAME="${{ inputs.tag || github.event.release.tag_name || github.ref_name }}"
+          if gh release view "$TAG_NAME" --json assets -q '.assets[].name' | grep -q "^NoteEase-Linux-x64.tar.gz$"; then
+            echo "ASSET_EXISTS=true" >> $GITHUB_ENV
+            echo "NoteEase-Linux-x64.tar.gz already exists on release $TAG_NAME. Skipping build."
+          else
+            echo "ASSET_EXISTS=false" >> $GITHUB_ENV
+          fi
+
       - name: Install Linux Build Dependencies
+        if: env.ASSET_EXISTS != 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libsecret-1-dev libjsoncpp-dev
 
       - name: Set up Flutter
+        if: env.ASSET_EXISTS != 'true'
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
           cache: true
 
       - name: Enable Linux Desktop
+        if: env.ASSET_EXISTS != 'true'
         run: flutter config --enable-linux-desktop
 
       - name: Install Dependencies
+        if: env.ASSET_EXISTS != 'true'
         run: flutter pub get
 
       - name: Build Linux Application
+        if: env.ASSET_EXISTS != 'true'
         run: flutter build linux --release
 
       - name: Package Linux Bundle into Tarball
+        if: env.ASSET_EXISTS != 'true'
         run: |
           tar -czf NoteEase-Linux-x64.tar.gz -C build/linux/x64/release/bundle .
 
       - name: Upload to Release
+        if: env.ASSET_EXISTS != 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -166,6 +254,7 @@ jobs:
 
   build-and-deploy-web:
     name: Build & Deploy Web App
+    if: ${{ inputs.target == null || inputs.target == 'all' || inputs.target == 'web' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -205,6 +294,7 @@ jobs:
 
   deploy-pages:
     name: Deploy to GitHub Pages
+    if: ${{ inputs.target == null || inputs.target == 'all' || inputs.target == 'web' }}
     needs: build-and-deploy-web
     runs-on: ubuntu-latest
     environment:
