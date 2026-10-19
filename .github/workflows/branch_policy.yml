@@ -35,8 +35,8 @@ jobs:
               exit 1
             fi
           elif [ "$TARGET_BRANCH" = "develop" ] || [ "$TARGET_BRANCH" = "dev" ]; then
-            # Dev/develop allows feature/*, bugfix/*, doc/*, refactor/*, hotfix/*
-            if [[ "$SOURCE_BRANCH" =~ ^(feature|bugfix|doc|refactor|hotfix)/.+ ]]; then
+            # Dev/develop allows feature/*, bugfix/*, doc/*, refactor/*, hotfix/*, or dev/develop sync
+            if [[ "$SOURCE_BRANCH" =~ ^(feature|bugfix|doc|refactor|hotfix)/.+ ]] || [[ "$SOURCE_BRANCH" =~ ^(dev|develop)$ ]]; then
               echo "✅ Branch '$SOURCE_BRANCH' adheres to naming conventions."
             else
               echo "❌ ERROR: Branch '$SOURCE_BRANCH' must follow naming convention:"
