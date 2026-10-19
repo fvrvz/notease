@@ -90,9 +90,7 @@ class _NoteStripState extends State<_NoteStrip> {
     final textColor = isDark ? AppColors.darkFgDefault : AppColors.lightFgDefault;
 
     return Tooltip(
-      message: widget.isSelected
-          ? 'Active Note: Click to collapse'
-          : (widget.note.title.isEmpty ? 'Untitled note' : widget.note.title),
+      message: widget.note.title.isEmpty ? 'Untitled note' : widget.note.title,
       child: MouseRegion(
         onEnter: (_) => setState(() => _isHovered = true),
         onExit: (_) => setState(() => _isHovered = false),
@@ -116,23 +114,17 @@ class _NoteStripState extends State<_NoteStrip> {
             ),
             child: Column(
               children: [
-                // Colored dot badge or collapse icon
+                // Colored dot badge
                 Padding(
                   padding: const EdgeInsets.only(top: 8, bottom: 6),
-                  child: widget.isSelected
-                      ? Icon(
-                          Icons.unfold_less_rounded,
-                          size: 13,
-                          color: color,
-                        )
-                      : Container(
-                          width: 7,
-                          height: 7,
-                          decoration: BoxDecoration(
-                            color: color,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
+                  child: Container(
+                    width: 7,
+                    height: 7,
+                    decoration: BoxDecoration(
+                      color: color,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
                 ),
                 Expanded(
                   child: Center(

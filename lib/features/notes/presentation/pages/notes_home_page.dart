@@ -301,12 +301,18 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage>
     final currentFocusId = _activeNoteId ?? selectedId;
     final selectedIndex = notes.indexWhere((n) => n.id == currentFocusId);
 
+    // Exclude any active or pending note immediately so its trigger strip does not linger during transitions
+    final excludedIds = {
+      if (currentFocusId != null) currentFocusId,
+      if (_pendingNoteId != null) _pendingNoteId!,
+    };
+
     // Left notes: notes before current focus (or all notes if none selected)
     final leftNotes = selectedIndex > 0
-        ? notes.sublist(0, selectedIndex)
+        ? notes.sublist(0, selectedIndex).where((n) => !excludedIds.contains(n.id)).toList()
         : (selectedIndex < 0 ? notes : <Note>[]);
     final rightNotes = selectedIndex >= 0 && selectedIndex < notes.length - 1
-        ? notes.sublist(selectedIndex + 1)
+        ? notes.sublist(selectedIndex + 1).where((n) => !excludedIds.contains(n.id)).toList()
         : <Note>[];
 
     final screenWidth = MediaQuery.sizeOf(context).width;
@@ -314,7 +320,7 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage>
     // Comfortable reading width for the opened note
     final noteWidth = (screenWidth - navWidth - 100.0).clamp(440.0, 720.0);
 
-    final highlightedStripId = _pendingNoteId ?? selectedId ?? _activeNoteId;
+    final highlightedStripId = selectedId ?? _activeNoteId;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -361,6 +367,8 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage>
                       return const SizedBox.shrink();
                     }
 
+                    final isFullyExpanded = _toggleAnimation.value >= 0.98;
+
                     return ClipRect(
                       child: Align(
                         alignment: Alignment.centerLeft,
@@ -373,6 +381,7 @@ class _NotesHomePageState extends ConsumerState<NotesHomePage>
                             child: NoteContentPanel(
                               key: ValueKey(activeId),
                               noteId: activeId,
+                              isFullyExpanded: isFullyExpanded,
                               onCollapse: () => _toggleNoteSelection(activeId),
                             ),
                           ),
